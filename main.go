@@ -18,7 +18,7 @@ type Rcon struct {
 	socket  net.Conn
 }
 
-//Establish connection & grab seed.
+//Connect tries to establish connection & grab seed.
 func (r *Rcon) Connect(addr string) (err error) {
 	r.service = addr
 	r.socket, err = net.Dial("tcp", addr)
@@ -39,20 +39,7 @@ func (r *Rcon) Connect(addr string) (err error) {
 	return
 }
 
-//Run command and return all data.
-func (r *Rcon) GetData(cmd string) (string, error) {
-	_, err := r.Write(cmd)
-	if err != nil {
-		return "", err
-	}
-	data, err := r.ReadAll()
-	if err != nil {
-		return "", err
-	}
-	return strings.Trim(data, "\n"), nil
-}
-
-//Encrypt seed & pass, perform authentication, and set admin name.
+//Login encrypts seed & pass, performs authentication, and sets admin name on the Rcon server.
 func (r *Rcon) Login(pass string) (err error) {
 	r.pass = pass
 	hash := md5.New()
@@ -73,13 +60,13 @@ func (r *Rcon) Login(pass string) (err error) {
 	return
 }
 
-//Read all incoming data up to (but not including) EOT.
+//ReadAll reads all data up to the EOT (and trims it off).
 func (r *Rcon) ReadAll() (string, error) {
 	result, err := bufio.NewReader(r.socket).ReadString('\u0004')
 	return strings.Trim(result, "\u0004"), err
 }
 
-//Attempt to reconnect to existing Rcon socket.
+//Reconnect will attempt to connect to reconnect the current Rcon.
 func (r *Rcon) Reconnect() (string, error) {
 	if err := r.Connect(r.service); err != nil {
 		return "", err
@@ -90,16 +77,29 @@ func (r *Rcon) Reconnect() (string, error) {
 	return "Successful", nil
 }
 
-//Set admin name on rcon server.
+//Send an rcon command and return response.
+func (r *Rcon) Send(cmd string) (string, error) {
+	_, err := r.Write(cmd)
+	if err != nil {
+		return "", err
+	}
+	data, err := r.ReadAll()
+	if err != nil {
+		return "", err
+	}
+	return strings.Trim(data, "\n"), nil
+}
+
+//SetAdmin sets the admin name for the rcon connection.
 func (r *Rcon) SetAdmin(name string) (string, error) {
-	data, err := r.GetData("bf2cc setadminname " + name)
+	data, err := r.Send("bf2cc setadminname " + name)
 	if err != nil {
 		return "", err
 	}
 	return data, err
 }
 
-//Prefix line to enable EOT & write to connection.
+//Write prefixs line to enable EOT & writes command to the rcon connection.
 func (r *Rcon) Write(line string) (int, error) {
 	if r == nil {
 		return 1, errors.New("no connection available")
