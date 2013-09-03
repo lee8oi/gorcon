@@ -1,4 +1,13 @@
-//The core Rcon package for gorcon2
+/* gorcon version 13.9.3 (lee8oi)
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+gorcon package contains the essential functions needed for, connecting to &
+running commands on, BF2CC based Rcon servers.
+
+*/
 package gorcon
 
 import (
@@ -8,6 +17,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 )
 
 type Rcon struct {
@@ -18,7 +28,7 @@ type Rcon struct {
 	socket  net.Conn
 }
 
-//Connect tries to establish connection & grab seed.
+//Connect to rcon server and grab seed.
 func (r *Rcon) Connect(addr string) (err error) {
 	r.service = addr
 	r.socket, err = net.Dial("tcp", addr)
@@ -60,21 +70,49 @@ func (r *Rcon) Login(pass string) (err error) {
 	return
 }
 
-//ReadAll reads all data up to the EOT (and trims it off).
+//Loop command repeatedly, running func on resulting data, and waiting duration
+//after each execution. If Send errors: Run Reconnect with 30 second duration.
+func (r *Rcon) Loop(cmd string, d time.Duration, fn func(data string)) error {
+	for {
+		data, err := r.Send(cmd)
+		if err != nil {
+			fmt.Println("Error", err)
+			_, err := r.Reconnect(30 * time.Second)
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			continue
+		} else {
+			fn(data)
+		}
+		time.Sleep(time.Second)
+	}
+}
+
+//ReadAll data up to the EOT (and trim it off).
 func (r *Rcon) ReadAll() (string, error) {
 	result, err := bufio.NewReader(r.socket).ReadString('\u0004')
 	return strings.Trim(result, "\u0004"), err
 }
 
-//Reconnect will attempt to connect to reconnect the current Rcon.
-func (r *Rcon) Reconnect() (string, error) {
-	if err := r.Connect(r.service); err != nil {
-		return "", err
+//Reconnect the current Rcon. If connection fails - wait duration & try again.
+//Returns on Login errors or upon successful reconnection.
+func (r *Rcon) Reconnect(duration time.Duration) (string, error) {
+	for {
+		fmt.Println("Attempting reconnection.")
+		if err := r.Connect(r.service); err != nil {
+			fmt.Println("Reconnection attempt failed. Waiting.\n")
+			time.Sleep(duration)
+			continue
+		}
+		if err := r.Login(r.pass); err != nil {
+			return "", err
+		}
+		fmt.Println("Reconnection successful.")
+		break
 	}
-	if err := r.Login(r.pass); err != nil {
-		return "", err
-	}
-	return "Successful", nil
+	return "success", nil
 }
 
 //Send an rcon command and return response.
@@ -99,7 +137,7 @@ func (r *Rcon) SetAdmin(name string) (string, error) {
 	return data, err
 }
 
-//Write prefixs line to enable EOT & writes command to the rcon connection.
+//Write prefixes line to enable EOT & writes command to the rcon connection.
 func (r *Rcon) Write(line string) (int, error) {
 	if r == nil {
 		return 1, errors.New("no connection available")
