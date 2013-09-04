@@ -92,7 +92,7 @@ func (r *Rcon) ReadAll() (string, error) {
 
 //Reconnect the current Rcon. If connection fails - wait duration & try again.
 //Returns on Login errors or upon successful reconnection.
-func (r *Rcon) Reconnect(duration time.Duration) (string, error) {
+func (r *Rcon) Reconnect(duration time.Duration) error {
 	for {
 		fmt.Println("Attempting reconnection.")
 		if err := r.Connect(r.service); err != nil {
@@ -101,12 +101,12 @@ func (r *Rcon) Reconnect(duration time.Duration) (string, error) {
 			continue
 		}
 		if err := r.Login(r.pass); err != nil {
-			return "", err
+			return err
 		}
 		fmt.Println("Reconnection successful.")
 		break
 	}
-	return "success", nil
+	return nil
 }
 
 //Send an rcon command and return response.
