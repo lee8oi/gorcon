@@ -71,21 +71,15 @@ func (r *Rcon) Login(pass string) (err error) {
 }
 
 //Loop command repeatedly, running func on resulting data, and waiting duration
-//after each execution. If Send errors: Run Reconnect with 30 second duration.
+//after each execution. Returns on send error.
 func (r *Rcon) Loop(cmd string, d time.Duration, fn func(data string)) error {
 	for {
 		data, err := r.Send(cmd)
 		if err != nil {
-			fmt.Println("Error", err)
-			_, err := r.Reconnect(30 * time.Second)
-			if err != nil {
-				fmt.Println(err)
-				return err
-			}
-			continue
-		} else {
-			fn(data)
+			fmt.Println("LOOPERROR: ", err)
+			return err
 		}
+		fn(data)
 		time.Sleep(time.Second)
 	}
 }
