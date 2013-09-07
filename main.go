@@ -70,20 +70,6 @@ func (r *Rcon) Login(pass string) (err error) {
 	return
 }
 
-//Loop command repeatedly, running func on resulting data, and waiting duration
-//after each execution. Returns on send error.
-func (r *Rcon) Loop(cmd string, d time.Duration, fn func(data string)) error {
-	for {
-		data, err := r.Send(cmd)
-		if err != nil {
-			fmt.Println("LOOPERROR: ", err)
-			return err
-		}
-		fn(data)
-		time.Sleep(time.Second)
-	}
-}
-
 //ReadAll data up to the EOT (and trim it off).
 func (r *Rcon) ReadAll() (string, error) {
 	result, err := bufio.NewReader(r.socket).ReadString('\u0004')
@@ -96,7 +82,7 @@ func (r *Rcon) Reconnect(duration time.Duration) error {
 	for {
 		fmt.Println("Attempting reconnection.")
 		if err := r.Connect(r.service); err != nil {
-			fmt.Println("Reconnection attempt failed. Waiting.\n")
+			fmt.Println("Reconnection attempt failed. Waiting.")
 			time.Sleep(duration)
 			continue
 		}
