@@ -1,4 +1,4 @@
-/* gorcon version 13.9.3 (lee8oi)
+/* gorcon version 13.12.3 (lee8oi)
 
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,12 +20,13 @@ import (
 	"time"
 )
 
+type Config struct {
+	Admin, Address, RconPort, Pass string
+}
+
 type Rcon struct {
-	Admin   string
-	pass    string
-	seed    string
-	service string
-	socket  net.Conn
+	pass, seed, service string
+	socket              net.Conn
 }
 
 //Connect to rcon server and grab seed.
@@ -49,7 +50,7 @@ func (r *Rcon) Connect(addr string) (err error) {
 	return
 }
 
-//Login encrypts seed & pass, performs authentication, and sets admin name on the Rcon server.
+//Login encrypts seed & pass, performs authentication.
 func (r *Rcon) Login(pass string) (err error) {
 	r.pass = pass
 	hash := md5.New()
@@ -60,11 +61,7 @@ func (r *Rcon) Login(pass string) (err error) {
 	}
 	if text, err := r.ReadAll(); err == nil {
 		if strings.Contains(text, "Authentication successful, rcon ready.") {
-			result, err := r.SetAdmin(r.Admin)
-			if err != nil {
-				fmt.Println("Error setting admin name:"+result, err)
-			}
-			fmt.Println("Authentication successful.", result)
+			fmt.Println("Authentication successful.")
 		}
 	}
 	return
@@ -115,6 +112,18 @@ func (r *Rcon) SetAdmin(name string) (string, error) {
 		return "", err
 	}
 	return data, err
+}
+
+//Start creates a connection, performing login, using Config variable values.
+func (r *Rcon) Start(c *Config) {
+	if err := r.Connect(c.Address + ":" + c.RconPort); err != nil {
+		fmt.Println(err)
+		return
+	}
+	if err := r.Login(c.Pass); err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 //Write prefixes line to enable EOT & writes command to the rcon connection.
