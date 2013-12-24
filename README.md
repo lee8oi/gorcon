@@ -4,7 +4,9 @@ gorcon
 gorcon package contains the essential functions needed for, connecting to &
 running commands on, BF2CC based Rcon servers.
 
-Basic usage (replace ALLCAPS elements with appropriate values):
+EXAMPLES:
+
+Basic:
 
 	package main
 	
@@ -19,19 +21,20 @@ Basic usage (replace ALLCAPS elements with appropriate values):
 			fmt.Println(err)
 			return
 		}
-		if err := r.Login("PASS"); err != nil {
+		if err := r.Login(PASSWORD); err != nil {
 			fmt.Println(err)
 			return
 		}
-		data, err := r.Send("COMMAND")
+		result, err := r.Send("RCON COMMAND")
 		if err != nil {
-			fmt.Println("Error", err)
-			return
+			fmt.Println(err)
 		}
-		fmt.Println(data)
+		if len(result) > 1 {
+			fmt.Println(result)
+		}
 	}
 
-Console with reconnection & Config usage.
+Command console including Reconnect & Config:
 
 	package main
 	
@@ -40,7 +43,6 @@ Console with reconnection & Config usage.
 		"fmt"
 		"github.com/lee8oi/gorcon"
 		"os"
-		"time"
 	)
 	
 	var config = gorcon.Config{
@@ -52,14 +54,18 @@ Console with reconnection & Config usage.
 	
 	func main() {
 		var r gorcon.Rcon
-		r.Start(&config)
-		str, err := r.SetAdmin(config.Admin)
-		if err != nil {
+		if err := r.Connect(config.Address + ":" + config.Port); err != nil {
 			fmt.Println(err)
+			return
 		}
-		fmt.Println(str)
+		if err := r.Login(config.Pass); err != nil {
+			fmt.Println(err)
+			return
+		}
+		r.AutoReconnect(true)
+		go r.Writer()
+		go r.Reader()
 		for {
-			fmt.Printf("Command: ")
 			in := bufio.NewReader(os.Stdin)
 			line, err := in.ReadString('\n')
 			if err != nil {
@@ -67,20 +73,7 @@ Console with reconnection & Config usage.
 				return
 			}
 			if len(line) > 1 {
-				str, err := r.Send(line)
-				if err != nil {
-					fmt.Println(err)
-					err = r.Reconnect(30 * time.Second)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					str, _ = r.Send(line)
-				}
-				fmt.Println(str)
+				r.Write(line)
 			}
 		}
 	}
-	
-	
-	

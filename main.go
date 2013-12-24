@@ -1,4 +1,4 @@
-/* gorcon version 13.12.3 (lee8oi)
+/* gorcon version 13.12.23 (lee8oi)
 
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,7 +13,6 @@ package gorcon
 import (
 	"bufio"
 	"crypto/md5"
-	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -21,32 +20,31 @@ import (
 )
 
 type Config struct {
-	Admin, Address, RconPort, Pass string
+	Admin, Address, Port, Pass string
 }
 
 type Rcon struct {
 	pass, seed, service string
-	socket              net.Conn
+	reconnect           bool
+	sock                net.Conn
+	send                chan []byte
 }
 
-//Connect to rcon server and grab seed.
-func (r *Rcon) Connect(addr string) (err error) {
-	r.service = addr
-	r.socket, err = net.Dial("tcp", addr)
+//AutoReconnect is used to enable/disable automatic socket reconnection. True to enable.
+func (r *Rcon) AutoReconnect(b bool) {
+	r.reconnect = b
+}
+
+//Connect establishes connection to specified address and grabs encryption seed
+//used by Login().
+func (r *Rcon) Connect(address string) (err error) {
+	r.service = address
+	r.sock, err = net.Dial("tcp", address)
 	if err != nil {
 		return err
 	}
-	scanner := bufio.NewScanner(r.socket)
-	for scanner.Scan() {
-		if text := scanner.Text(); strings.Contains(text, "### Digest seed:") {
-			splitLine := strings.Split(text, ":")
-			r.seed = strings.TrimSpace(splitLine[1])
-			break
-		}
-	}
-	if err = scanner.Err(); err != nil {
-		fmt.Println(err)
-	}
+	str := r.Scan("### Digest seed:")
+	r.seed = strings.TrimSpace(strings.Split(str, ":")[1])
 	return
 }
 
@@ -55,26 +53,32 @@ func (r *Rcon) Login(pass string) (err error) {
 	r.pass = pass
 	hash := md5.New()
 	hash.Write([]byte(r.seed + pass))
-	loginhash := fmt.Sprintf("%x", hash.Sum(nil))
-	if _, err = r.Write("login " + loginhash); err != nil {
-		return
+	_, err = r.sock.Write([]byte("login " + fmt.Sprintf("%x", hash.Sum(nil)) + "\n"))
+	if err != nil {
+		return err
 	}
-	if text, err := r.ReadAll(); err == nil {
-		if strings.Contains(text, "Authentication successful, rcon ready.") {
-			fmt.Println("Authentication successful.")
-		}
-	}
+	r.Scan("Authentication successful")
 	return
 }
 
-//ReadAll data up to the EOT (and trim it off).
-func (r *Rcon) ReadAll() (string, error) {
-	result, err := bufio.NewReader(r.socket).ReadString('\u0004')
-	return strings.Trim(result, "\u0004"), err
+//Reader reads all incoming socket data, handling reconnection if enabled.
+func (r *Rcon) Reader() {
+	for {
+		result, err := bufio.NewReader(r.sock).ReadString('\u0004')
+		if err != nil {
+			fmt.Println(err)
+			if strings.Contains(fmt.Sprintf("%s", err), "connection") && r.reconnect {
+				r.Reconnect(30 * time.Second)
+			} else {
+				break
+			}
+		}
+		fmt.Println(strings.TrimSpace(strings.Trim(result, "\u0004")))
+	}
 }
 
-//Reconnect the current Rcon. If connection fails - wait duration & try again.
-//Returns on Login errors or upon successful reconnection.
+//Reconnect attempts to re-establish Rcon connection. Waiting duration & trying
+//again on failure.
 func (r *Rcon) Reconnect(duration time.Duration) error {
 	for {
 		fmt.Println("Attempting reconnection.")
@@ -92,44 +96,52 @@ func (r *Rcon) Reconnect(duration time.Duration) error {
 	return nil
 }
 
-//Send an rcon command and return response.
-func (r *Rcon) Send(cmd string) (string, error) {
-	_, err := r.Write(cmd)
-	if err != nil {
-		return "", err
+//Scan parses incoming socket data for specified string & returns the data found.
+func (r *Rcon) Scan(str string) (s string) {
+	scanner := bufio.NewScanner(r.sock)
+	for scanner.Scan() {
+		if s = scanner.Text(); strings.Contains(s, str) {
+			fmt.Println(s)
+			break
+		}
 	}
-	data, err := r.ReadAll()
-	if err != nil {
-		return "", err
-	}
-	return strings.Trim(data, "\n"), nil
-}
-
-//SetAdmin sets the admin name for the rcon connection.
-func (r *Rcon) SetAdmin(name string) (string, error) {
-	data, err := r.Send("bf2cc setadminname " + name)
-	if err != nil {
-		return "", err
-	}
-	return data, err
-}
-
-//Start creates a connection, performing login, using Config variable values.
-func (r *Rcon) Start(c *Config) {
-	if err := r.Connect(c.Address + ":" + c.RconPort); err != nil {
+	if err := scanner.Err(); err != nil {
 		fmt.Println(err)
-		return
 	}
-	if err := r.Login(c.Pass); err != nil {
+	return
+}
+
+//Send is a single-use style function for writing a command to the socket and
+//returning the resulting data as a string.
+func (r *Rcon) Send(command string) (string, error) {
+	line := "\u0002" + command + "\n"
+	_, err := r.sock.Write([]byte(line))
+	if err != nil {
 		fmt.Println(err)
-		return
+		return "", err
+	}
+	result, err := bufio.NewReader(r.sock).ReadString('\u0004')
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+	return strings.TrimSpace(strings.Trim(result, "\u0004")), nil
+}
+
+//Writer handles writing send channel data to the socket, prefixing as needed to
+//enable EOT to be appended to the resulting data.
+func (r *Rcon) Writer() {
+	r.send = make(chan []byte, 256)
+	for message := range r.send {
+		line := "\u0002" + fmt.Sprintf("%s", message) + "\n"
+		_, err := r.sock.Write([]byte(line))
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
-//Write prefixes line to enable EOT & writes command to the rcon connection.
-func (r *Rcon) Write(line string) (int, error) {
-	if r == nil {
-		return 1, errors.New("no connection available")
-	}
-	return r.socket.Write([]byte("\u0002" + strings.TrimSpace(line) + "\n"))
+//Write sends a message to Rcon.send channel to be written out by Writer().
+func (r *Rcon) Write(message string) {
+	r.send <- []byte(strings.TrimSpace(message))
 }
