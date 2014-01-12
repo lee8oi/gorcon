@@ -62,7 +62,7 @@ Command console including Reconnect & Config:
 			fmt.Println(err)
 			return
 		}
-		r.AutoReconnect(true)
+		r.AutoReconnect("30s") //see time.ParseDuration for valid time units
 		go r.Writer()
 		go r.Reader()
 		for {

@@ -1,4 +1,4 @@
-/* gorcon version 13.12.23 (lee8oi)
+/* gorcon version 14.1.12 (lee8oi)
 
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -26,13 +26,21 @@ type Config struct {
 type Rcon struct {
 	pass, seed, service string
 	reconnect           bool
+	wait                time.Duration
 	sock                net.Conn
 	send                chan []byte
 }
 
-//AutoReconnect is used to enable/disable automatic socket reconnection. True to enable.
-func (r *Rcon) AutoReconnect(b bool) {
-	r.reconnect = b
+//AutoReconnect enables reconnection by setting a wait time. Valid time units
+// are "ns", "us" (or "µs"), "ms", "s", "m", "h" (see time.ParseDuration doc).
+func (r *Rcon) AutoReconnect(wait string) {
+	dur, err := time.ParseDuration(wait)
+	if err != nil {
+		fmt.Println("Bad duration: ", err)
+		return
+	}
+	r.wait = dur
+	r.reconnect = true
 }
 
 //Connect establishes connection to specified address and grabs encryption seed
@@ -67,8 +75,8 @@ func (r *Rcon) Reader() {
 		result, err := bufio.NewReader(r.sock).ReadString('\u0004')
 		if err != nil {
 			fmt.Println(err)
-			if strings.Contains(fmt.Sprintf("%s", err), "connection") && r.reconnect {
-				r.Reconnect(30 * time.Second)
+			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
+				r.Reconnect()
 			} else {
 				break
 			}
@@ -79,12 +87,12 @@ func (r *Rcon) Reader() {
 
 //Reconnect attempts to re-establish Rcon connection. Waiting duration & trying
 //again on failure.
-func (r *Rcon) Reconnect(duration time.Duration) error {
+func (r *Rcon) Reconnect() error {
 	for {
 		fmt.Println("Attempting reconnection.")
 		if err := r.Connect(r.service); err != nil {
 			fmt.Println("Reconnection attempt failed. Waiting.")
-			time.Sleep(duration)
+			time.Sleep(r.wait)
 			continue
 		}
 		if err := r.Login(r.pass); err != nil {
@@ -112,18 +120,30 @@ func (r *Rcon) Scan(str string) (s string) {
 }
 
 //Send is a single-use style function for writing a command to the socket and
-//returning the resulting data as a string.
+//returning the resulting data as a string. Includes reconnection.
 func (r *Rcon) Send(command string) (string, error) {
 	line := "\u0002" + command + "\n"
 	_, err := r.sock.Write([]byte(line))
 	if err != nil {
-		fmt.Println(err)
-		return "", err
+		fmt.Println("Write/connection issue:", err)
+		if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
+			if err := r.Reconnect(); err != nil {
+				return "", err
+			} else {
+				return r.Send(command)
+			}
+		}
 	}
 	result, err := bufio.NewReader(r.sock).ReadString('\u0004')
 	if err != nil {
-		fmt.Println(err)
-		return "", err
+		fmt.Println("Reader/connection issue:", err)
+		if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
+			if err := r.Reconnect(); err != nil {
+				return "", err
+			} else {
+				return r.Send(command)
+			}
+		}
 	}
 	return strings.TrimSpace(strings.Trim(result, "\u0004")), nil
 }
