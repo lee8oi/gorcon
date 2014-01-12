@@ -49,7 +49,7 @@ func (pl *PlayerList) track(list *PlayerList) {
 	var base time.Time
 	for i := 0; i < 16; i++ {
 		switch {
-		case pl[i].Name == list[i].Name: //connecting or connected
+		case pl[i].Name == list[i].Name: //connecting existing
 			if pl[i].Connected == "0" && list[i].Connected == "1" {
 				if pl[i].Joined == base {
 					fmt.Printf("%s: connected\n", list[i].Name)
@@ -57,14 +57,7 @@ func (pl *PlayerList) track(list *PlayerList) {
 					pl[i].Joined = t
 				}
 			}
-		case len(pl[i].Name) > 0 && len(list[i].Name) == 0: //disconnected
-			if pl[i].Joined != base {
-				dur := time.Since(pl[i].Joined)
-				fmt.Printf("%s - disconnected (playtime: %s)\n", pl[i].Name, dur.String())
-			} else {
-				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
-			}
-		case len(pl[i].Name) == 0 && len(list[i].Name) > 0: //connecting
+		case len(pl[i].Name) == 0 && len(list[i].Name) > 0: //connecting new
 			pl.update(i, list[i])
 			if pl[i].Connected == "1" && pl[i].Joined == base {
 				pl[i].Joined = time.Now()
@@ -73,13 +66,25 @@ func (pl *PlayerList) track(list *PlayerList) {
 			if list[i].Connected == "0" {
 				fmt.Printf("%s - connecting\n", list[i].Name)
 			}
+		case len(pl[i].Name) > 0 && len(list[i].Name) == 0: //disconnecting
+			if pl[i].Joined != base {
+				dur := time.Since(pl[i].Joined)
+				fmt.Printf("%s - disconnected (playtime: %s)\n", pl[i].Name, dur.String())
+			} else {
+				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
+			}
+
 		}
 	}
 }
 
 //updateall parses new list and updates all player slots.
 func (pl *PlayerList) updateall(l PlayerList) {
+	var base Player
 	for i := 0; i < 16; i++ {
+		if pl[i] == base && l[i] == base { //skip if current & new are empty
+			continue
+		}
 		pl.update(i, l[i])
 	}
 }
