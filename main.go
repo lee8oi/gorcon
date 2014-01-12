@@ -31,8 +31,8 @@ type Rcon struct {
 	send                chan []byte
 }
 
-//AutoReconnect enables reconnection by setting a wait time. Valid time units
-// are "ns", "us" (or "µs"), "ms", "s", "m", "h" (see time.ParseDuration doc).
+//AutoReconnect enables reconnection. Valid time units are "ns", "us" (or "µs"),
+// "ms", "s", "m", "h" (see time.ParseDuration doc).
 func (r *Rcon) AutoReconnect(wait string) {
 	dur, err := time.ParseDuration(wait)
 	if err != nil {
