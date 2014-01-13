@@ -77,8 +77,6 @@ func (r *Rcon) Reader() {
 			fmt.Println(err)
 			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
 				r.Reconnect()
-			} else {
-				break
 			}
 		}
 		fmt.Println(strings.TrimSpace(strings.Trim(result, "\u0004")))
@@ -157,6 +155,9 @@ func (r *Rcon) Writer() {
 		_, err := r.sock.Write([]byte(line))
 		if err != nil {
 			fmt.Println(err)
+			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
+				r.Reconnect()
+			}
 		}
 	}
 }
