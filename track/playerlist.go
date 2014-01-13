@@ -28,6 +28,45 @@ type Player struct {
 //PlayerList contains a maximum of 16 player 'slots' as per game server limits.
 type PlayerList [16]Player
 
+//new takes a 'bf2cc pl' result string and returns a new PlayerList.
+func (pl *PlayerList) new(data string) (plist PlayerList) {
+	if len(data) > 1 {
+		split := strings.Split(data, "\r")
+		for _, value := range split {
+			var p Player
+			splitLine := strings.Split(strings.TrimSpace(value), "\t")
+			if len(splitLine) < 48 {
+				continue
+			}
+			kit := "none"
+			if splitLine[34] != "none" {
+				kit = strings.Split(splitLine[34], "_")[1]
+			}
+			p = Player{
+				Pid:       splitLine[0],
+				Name:      splitLine[1],
+				Profileid: splitLine[10],
+				Team:      splitLine[2],
+				Level:     splitLine[39],
+				Kit:       kit,
+				Score:     splitLine[37],
+				Kills:     splitLine[31],
+				Deaths:    splitLine[36],
+				Alive:     splitLine[8],
+				Connected: splitLine[4],
+				Vip:       splitLine[46],
+				Nucleus:   splitLine[47],
+				Ping:      splitLine[3],
+				Suicides:  strings.TrimSpace(splitLine[30]),
+			}
+			key, _ := strconv.Atoi(p.Pid)
+			plist[key] = p
+		}
+		return
+	}
+	return
+}
+
 //Tracker uses an Rcon connection to monitor player connection changes and keeps
 //current player list updated. Uses 'bf2cc pl' rcon command to request player data.
 func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
@@ -78,17 +117,6 @@ func (pl *PlayerList) track(list *PlayerList) {
 	}
 }
 
-//updateall parses a given PlayerList and updates all existing player slots.
-func (pl *PlayerList) updateall(l *PlayerList) {
-	var base Player
-	for i := 0; i < 16; i++ {
-		if pl[i] == base && l[i] == base { //skip if current & new are empty
-			continue
-		}
-		pl.update(i, &l[i])
-	}
-}
-
 //update the player slot at the index specifed by key.
 //After initial update: only elements that can potentially change during playtime
 //are updated.
@@ -108,41 +136,13 @@ func (pl *PlayerList) update(key int, p *Player) {
 	pl[key] = *p
 }
 
-//new takes a 'bf2cc pl' result string and returns a new PlayerList.
-func (pl *PlayerList) new(data string) (plist PlayerList) {
-	if len(data) > 1 {
-		split := strings.Split(data, "\r")
-		for _, value := range split {
-			var p Player
-			splitLine := strings.Split(strings.TrimSpace(value), "\t")
-			if len(splitLine) < 48 {
-				continue
-			}
-			kit := "none"
-			if splitLine[34] != "none" {
-				kit = strings.Split(splitLine[34], "_")[1]
-			}
-			p = Player{
-				Pid:       splitLine[0],
-				Name:      splitLine[1],
-				Profileid: splitLine[10],
-				Team:      splitLine[2],
-				Level:     splitLine[39],
-				Kit:       kit,
-				Score:     splitLine[37],
-				Kills:     splitLine[31],
-				Deaths:    splitLine[36],
-				Alive:     splitLine[8],
-				Connected: splitLine[4],
-				Vip:       splitLine[46],
-				Nucleus:   splitLine[47],
-				Ping:      splitLine[3],
-				Suicides:  strings.TrimSpace(splitLine[30]),
-			}
-			key, _ := strconv.Atoi(p.Pid)
-			plist[key] = p
+//updateall parses a given PlayerList and updates all existing player slots.
+func (pl *PlayerList) updateall(l *PlayerList) {
+	var base Player
+	for i := 0; i < 16; i++ {
+		if pl[i] == base && l[i] == base { //skip if current & new are empty
+			continue
 		}
-		return
+		pl.update(i, &l[i])
 	}
-	return
 }
