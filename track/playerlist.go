@@ -39,7 +39,7 @@ func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
 		}
 		list := pl.new(str)
 		pl.track(&list)
-		pl.updateall(list)
+		pl.updateall(&list)
 		time.Sleep(1 * time.Second)
 	}
 }
@@ -57,8 +57,8 @@ func (pl *PlayerList) track(list *PlayerList) {
 					pl[i].Joined = t
 				}
 			}
-		case len(pl[i].Name) == 0 && len(list[i].Name) > 0: //connecting new
-			pl.update(i, list[i])
+		case len(pl[i].Name) == 0 && len(list[i].Name) > 0: //connecting
+			pl.update(i, &list[i])
 			if pl[i].Connected == "1" && pl[i].Joined == base {
 				pl[i].Joined = time.Now()
 				fmt.Printf("%s - connection exists\n", list[i].Name)
@@ -78,42 +78,37 @@ func (pl *PlayerList) track(list *PlayerList) {
 	}
 }
 
-//updateall parses new list and updates all player slots.
-func (pl *PlayerList) updateall(l PlayerList) {
+//updateall parses a given PlayerList and updates all existing player slots.
+func (pl *PlayerList) updateall(l *PlayerList) {
 	var base Player
 	for i := 0; i < 16; i++ {
 		if pl[i] == base && l[i] == base { //skip if current & new are empty
 			continue
 		}
-		pl.update(i, l[i])
+		pl.update(i, &l[i])
 	}
 }
 
-//update uses the p.Pid as a key to update the data in the corresponding player slot.
-//Item by item assignment allows tracking elements like '.Joined' to retain existing values.
-func (pl *PlayerList) update(key int, p Player) {
-	if len(p.Pid) > 0 && pl[key].Pid == p.Pid {
+//update the player slot at the index specifed by key.
+//After initial update: only elements that can potentially change during playtime
+//are updated.
+func (pl *PlayerList) update(key int, p *Player) {
+	if len(p.Name) > 0 && pl[key].Name == p.Name {
 		pl[key].Alive = p.Alive
 		pl[key].Connected = p.Connected
 		pl[key].Deaths = p.Deaths
 		pl[key].Kills = p.Kills
-		pl[key].Kit = p.Kit
 		pl[key].Level = p.Level
-		pl[key].Name = p.Name
-		pl[key].Nucleus = p.Nucleus
-		pl[key].Pid = p.Pid
 		pl[key].Ping = p.Ping
-		pl[key].Profileid = p.Profileid
 		pl[key].Score = p.Score
 		pl[key].Suicides = p.Suicides
-		pl[key].Team = p.Team
 		pl[key].Vip = p.Vip
 		return
 	}
-	pl[key] = p
+	pl[key] = *p
 }
 
-//new returns a new PlayerList generated from given 'bf2cc pl' data string
+//new takes a 'bf2cc pl' result string and returns a new PlayerList.
 func (pl *PlayerList) new(data string) (plist PlayerList) {
 	if len(data) > 1 {
 		split := strings.Split(data, "\r")
