@@ -1,11 +1,13 @@
-/* gorcon/track version 14.1.13 (lee8oi)
-
+/*
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-gorcon/track package contains the PlayerList types and the Tracker methods
-needed to track player connections & stats.
+gorcon/track version 14.1.13 (lee8oi)
+
+track package contains the PlayerList types and the Tracker method
+needed to track player connections & game stats. Includes a snapshot
+system used to store the current PlayerList in a file as JSON (./snapshot.json).
 
 */
 package track
@@ -76,7 +78,6 @@ func (pl *PlayerList) snapshot(path string) {
 		fmt.Println(err)
 		return
 	}
-	//fmt.Println(fmt.Sprintf("%s", b))
 	err = ioutil.WriteFile(path, b, 0644)
 	if err != nil {
 		fmt.Println(err)
@@ -85,7 +86,6 @@ func (pl *PlayerList) snapshot(path string) {
 
 //load reads a snapshot file & updates current PlayerList
 func (pl *PlayerList) load(path string) {
-	//ReadFile(filename string) ([]byte, error)
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		fmt.Println(err)
@@ -97,8 +97,8 @@ func (pl *PlayerList) load(path string) {
 	}
 }
 
-//Tracker uses an Rcon connection to monitor player connection changes and keeps
-//current player list updated. Uses 'bf2cc pl' rcon command to request player data.
+//Tracker uses an Rcon connection to monitor player connection changes and keep
+//the current PlayerList updated. Uses 'bf2cc pl' rcon command to request player data.
 func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
 	pl.load("snapshot.json")
 	for {
@@ -109,7 +109,7 @@ func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
 		}
 		list := pl.new(str)
 		pl.track(&list)
-		pl.updateall(&list)
+		pl.updateAll(&list)
 		pl.snapshot("snapshot.json")
 		time.Sleep(1 * time.Second)
 	}
@@ -169,7 +169,7 @@ func (pl *PlayerList) update(key int, p *Player) {
 }
 
 //updateall parses a given PlayerList and updates all existing player slots.
-func (pl *PlayerList) updateall(l *PlayerList) {
+func (pl *PlayerList) updateAll(l *PlayerList) {
 	var base Player
 	for i := 0; i < 16; i++ {
 		if pl[i] == base && l[i] == base { //skip if current & new are empty

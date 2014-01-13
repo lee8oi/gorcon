@@ -1,8 +1,9 @@
-/* gorcon version 14.1.12 (lee8oi)
-
+/*
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+gorcon version 14.1.13 (lee8oi)
 
 gorcon package contains the essential functions needed for, connecting to &
 running commands on, BF2CC based Rcon servers.
@@ -43,7 +44,7 @@ func (r *Rcon) AutoReconnect(wait string) {
 	r.reconnect = true
 }
 
-//Connect establishes connection to specified address and grabs encryption seed
+//Connect establishes connection to specified address and stores encryption seed
 //used by Login().
 func (r *Rcon) Connect(address string) (err error) {
 	r.service = address
@@ -56,7 +57,7 @@ func (r *Rcon) Connect(address string) (err error) {
 	return
 }
 
-//Login encrypts seed & pass, performs authentication.
+//Login encrypts seed & pass, performs authentication with Rcon server.
 func (r *Rcon) Login(pass string) (err error) {
 	r.pass = pass
 	hash := md5.New()
@@ -146,8 +147,8 @@ func (r *Rcon) Send(command string) (string, error) {
 	return strings.TrimSpace(strings.Trim(result, "\u0004")), nil
 }
 
-//Writer handles writing send channel data to the socket, prefixing as needed to
-//enable EOT to be appended to the resulting data.
+//Writer handles writing send channel data to the socket. Handles reconnection if
+//enabled.
 func (r *Rcon) Writer() {
 	r.send = make(chan []byte, 256)
 	for message := range r.send {
