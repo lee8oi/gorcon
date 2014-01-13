@@ -1,4 +1,4 @@
-/* gorcon/track version 14.1.12 (lee8oi)
+/* gorcon/track version 14.1.13 (lee8oi)
 
 This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,8 +11,10 @@ needed to track player connections & stats.
 package track
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/lee8oi/gorcon"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
@@ -67,9 +69,38 @@ func (pl *PlayerList) new(data string) (plist PlayerList) {
 	return
 }
 
+//snapshot saves a copy of the current PlayerList to file as JSON.
+func (pl *PlayerList) snapshot(path string) {
+	b, err := json.Marshal(*pl)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	//fmt.Println(fmt.Sprintf("%s", b))
+	err = ioutil.WriteFile(path, b, 0644)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+//load reads a snapshot file & updates current PlayerList
+func (pl *PlayerList) load(path string) {
+	//ReadFile(filename string) ([]byte, error)
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = json.Unmarshal(b, pl)
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
 //Tracker uses an Rcon connection to monitor player connection changes and keeps
 //current player list updated. Uses 'bf2cc pl' rcon command to request player data.
 func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
+	pl.load("snapshot.json")
 	for {
 		str, err := r.Send("bf2cc pl")
 		if err != nil {
@@ -79,6 +110,7 @@ func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
 		list := pl.new(str)
 		pl.track(&list)
 		pl.updateall(&list)
+		pl.snapshot("snapshot.json")
 		time.Sleep(1 * time.Second)
 	}
 }
