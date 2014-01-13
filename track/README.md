@@ -4,9 +4,12 @@ gorcon/track - Experimental
 gorcon/track package contains the PlayerList types and the Tracker methods
 needed to track player connections & stats.
 
-Note:
+Notes:
+
 Tracker currently logs connection status to standard output. Includes session
 playtime on disconnect.
+
+Snapshot system writes PlayerList to file as JSON (current dir. 'snapshot.json'). Tracker loads the snapshot prior to tracking.
 
 Example:
 
