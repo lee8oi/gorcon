@@ -13,7 +13,6 @@ package track
 
 import (
 	"fmt"
-
 	"html"
 	"strings"
 )
@@ -31,10 +30,13 @@ func (c *chat) new(data string) {
 		split := strings.Split(data, "\r")
 		for _, value := range split {
 			elem := strings.Split(strings.TrimSpace(value), "\t")
-			if len(elem) < 6 {
-				return
+			if len(elem) < 5 {
+				continue
+			} else if len(elem) < 6 {
+				elem = append(elem, " ")
+			} else {
+				elem[5] = strings.Replace(html.EscapeString(elem[5]), `\`, `\\`, -1)
 			}
-			elem[5] = strings.Replace(html.EscapeString(elem[5]), `\`, `\\`, -1)
 			m := message{
 				Origin: elem[1],
 				Team:   elem[2],
@@ -48,7 +50,7 @@ func (c *chat) new(data string) {
 	return
 }
 
-//parse current chat messages.
+//parse existing messages then clear chat.
 func (c *chat) parse() {
 	var base []message
 	for key, value := range c.messages {
