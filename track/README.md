@@ -1,19 +1,15 @@
 gorcon/track - Experimental
 ======
 
-gorcon/track package contains the PlayerList types and the Tracker methods
-needed to track player connections & stats.
-
-Notes:
-
-Tracker currently logs connection status to standard output. Includes session
-playtime on disconnect.
-
-Snapshot system writes PlayerList to file as JSON (current dir. 'snapshot.json'). Tracker loads the snapshot prior to tracking.
+track is used for tracking player stats & chat messages. Utilizes gorcon
+to monitor game server activity. Also has a snapshot system which stores a copy of
+the current player list as JSON in the 'snapshot.json' file. Snapshots are used
+to recover playerlist data (including session playtime) in the event of
+application interruption/etc.
 
 Example:
 
-Rcon with 30 second AutoReconnect and Tracker.
+Rcon with AutoReconnect and Tracker usage.
 
 	package main
 	
@@ -21,6 +17,7 @@ Rcon with 30 second AutoReconnect and Tracker.
 		"fmt"
 		"github.com/lee8oi/gorcon"
 		"github.com/lee8oi/gorcon/track"
+		"time"
 	)
 	
 	var config = gorcon.Config{
@@ -44,5 +41,5 @@ Rcon with 30 second AutoReconnect and Tracker.
 			return
 		}
 		r.AutoReconnect("30s")
-		pl.Tracker(&r)
+		track.Tracker(&r, "500ms")
 	}

@@ -5,39 +5,39 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 gorcon/track version 14.1.13 (lee8oi)
 
-track package contains the PlayerList types and the Tracker method
-needed to track player connections & game stats. Includes a snapshot
-system used to store the current PlayerList in a file as JSON (./snapshot.json).
-
+playerList and its methods are used to track player stats & connection
+changes. Includes a snapshot system used to store the current playerList in a file
+as JSON (./snapshot.json).
 */
+
+//
 package track
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lee8oi/gorcon"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
 )
 
-type Player struct {
+type player struct {
 	Pid, Name, Profileid, Team, Level, Kit, Score,
 	Kills, Deaths, Alive, Connected, Vip, Nucleus,
 	Ping, Suicides string
 	Joined time.Time
 }
 
-//PlayerList contains a maximum of 16 player 'slots' as per game server limits.
-type PlayerList [16]Player
+//playerList contains a maximum of 16 player 'slots' as per game server limits.
+type playerList [16]player
 
-//new takes a 'bf2cc pl' result string and returns a new PlayerList.
-func (pl *PlayerList) new(data string) (plist PlayerList) {
+//new takes a 'bf2cc pl' result string and returns a new playerList.
+func (pl *playerList) new(data string) (plist playerList) {
 	if len(data) > 1 {
 		split := strings.Split(data, "\r")
 		for _, value := range split {
-			var p Player
+			var p player
 			splitLine := strings.Split(strings.TrimSpace(value), "\t")
 			if len(splitLine) < 48 {
 				continue
@@ -46,7 +46,7 @@ func (pl *PlayerList) new(data string) (plist PlayerList) {
 			if splitLine[34] != "none" {
 				kit = strings.Split(splitLine[34], "_")[1]
 			}
-			p = Player{
+			p = player{
 				Pid:       splitLine[0],
 				Name:      splitLine[1],
 				Profileid: splitLine[10],
@@ -71,8 +71,8 @@ func (pl *PlayerList) new(data string) (plist PlayerList) {
 	return
 }
 
-//snapshot saves a copy of the current PlayerList to file as JSON.
-func (pl *PlayerList) snapshot(path string) {
+//snapshot saves a copy of the current playerList to file as JSON.
+func (pl *playerList) snapshot(path string) {
 	b, err := json.Marshal(*pl)
 	if err != nil {
 		fmt.Println(err)
@@ -84,8 +84,8 @@ func (pl *PlayerList) snapshot(path string) {
 	}
 }
 
-//load reads a snapshot file & updates current PlayerList
-func (pl *PlayerList) load(path string) {
+//load reads a snapshot file & updates current playerList
+func (pl *playerList) load(path string) {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		fmt.Println(err)
@@ -97,26 +97,8 @@ func (pl *PlayerList) load(path string) {
 	}
 }
 
-//Tracker uses an Rcon connection to monitor player connection changes and keep
-//the current PlayerList updated. Uses 'bf2cc pl' rcon command to request player data.
-func (pl *PlayerList) Tracker(r *gorcon.Rcon) {
-	pl.load("snapshot.json")
-	for {
-		str, err := r.Send("bf2cc pl")
-		if err != nil {
-			fmt.Println("main 36 error: ", err)
-			break
-		}
-		list := pl.new(str)
-		pl.track(&list)
-		pl.updateAll(&list)
-		pl.snapshot("snapshot.json")
-		time.Sleep(1 * time.Second)
-	}
-}
-
-//track compares current PlayerList to new list, slot by slot, to track player connection changes.
-func (pl *PlayerList) track(list *PlayerList) {
+//track compares current playerList to new list, slot by slot, to track player connection changes.
+func (pl *playerList) track(list *playerList) {
 	var base time.Time
 	for i := 0; i < 16; i++ {
 		switch {
@@ -152,7 +134,7 @@ func (pl *PlayerList) track(list *PlayerList) {
 //update the player slot at the index specifed by key.
 //After initial update: only elements that can potentially change during playtime
 //are updated.
-func (pl *PlayerList) update(key int, p *Player) {
+func (pl *playerList) update(key int, p *player) {
 	if len(p.Name) > 0 && pl[key].Name == p.Name {
 		pl[key].Alive = p.Alive
 		pl[key].Connected = p.Connected
@@ -168,9 +150,9 @@ func (pl *PlayerList) update(key int, p *Player) {
 	pl[key] = *p
 }
 
-//updateall parses a given PlayerList and updates all existing player slots.
-func (pl *PlayerList) updateAll(l *PlayerList) {
-	var base Player
+//updateall parses a given playerList and updates all existing player slots.
+func (pl *playerList) updateAll(l *playerList) {
+	var base player
 	for i := 0; i < 16; i++ {
 		if pl[i] == base && l[i] == base { //skip if current & new are empty
 			continue
