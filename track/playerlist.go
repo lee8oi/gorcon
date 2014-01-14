@@ -114,7 +114,7 @@ func (pl *playerList) track(list *playerList) {
 			pl.update(i, &list[i])
 			if pl[i].Connected == "1" && pl[i].Joined == base {
 				pl[i].Joined = time.Now()
-				fmt.Printf("%s - connection exists\n", list[i].Name)
+				fmt.Printf("%s - connection pre-existed\n", list[i].Name)
 			}
 			if list[i].Connected == "0" {
 				fmt.Printf("%s - connecting\n", list[i].Name)
