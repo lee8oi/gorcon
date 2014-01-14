@@ -105,9 +105,8 @@ func (pl *playerList) track(list *playerList) {
 		case pl[i].Name == list[i].Name: //connecting existing
 			if pl[i].Connected == "0" && list[i].Connected == "1" {
 				if pl[i].Joined == base {
-					fmt.Printf("%s: connected\n", list[i].Name)
-					t := time.Now()
-					pl[i].Joined = t
+					fmt.Printf("%s - connected\n", list[i].Name)
+					pl[i].Joined = time.Now()
 				}
 			}
 		case len(pl[i].Name) == 0 && len(list[i].Name) > 0: //connecting
