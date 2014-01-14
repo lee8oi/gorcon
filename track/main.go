@@ -53,7 +53,6 @@ func Tracker(r *gorcon.Rcon, wait string) {
 		}
 		list := pl.new(pstr)
 		pl.track(&list)
-		pl.updateAll(&list)
 		pl.snapshot("snapshot.json")
 		time.Sleep(dur)
 	}

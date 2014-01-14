@@ -126,8 +126,8 @@ func (pl *playerList) track(list *playerList) {
 			} else {
 				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
 			}
-
 		}
+		pl.update(i, &list[i])
 	}
 }
 
@@ -148,15 +148,4 @@ func (pl *playerList) update(key int, p *player) {
 		return
 	}
 	pl[key] = *p
-}
-
-//updateall parses a given playerList and updates all existing player slots.
-func (pl *playerList) updateAll(l *playerList) {
-	var base player
-	for i := 0; i < 16; i++ {
-		if pl[i] == base && l[i] == base { //skip if current & new are empty
-			continue
-		}
-		pl.update(i, &l[i])
-	}
 }
