@@ -12,9 +12,7 @@ data from game server and perform tracking functions.
 /*
 track is used for tracking player stats & chat messages. Utilizes gorcon
 to monitor game server activity. Also has a snapshot system which stores a copy of
-the current player list as JSON in the 'snapshot.json' file. Snapshots are used
-to recover playerlist data (including session playtime) in the event of
-application interruption/etc.
+the current player list as JSON in the 'snapshot.json' file.
 */
 package track
 
@@ -41,30 +39,22 @@ func Tracker(r *gorcon.Rcon, wait string) {
 	}
 	pl.load("snapshot.json")
 	for {
-		chat, err := r.Send("bf2cc clientchatbuffer")
+		cstr, err := r.Send("bf2cc clientchatbuffer")
 		if err != nil {
 			fmt.Println(err)
 			break
 		}
-		c.run(chat)
-		stats, err := r.Send("bf2cc pl")
+		c.new(cstr)
+		c.parse()
+		pstr, err := r.Send("bf2cc pl")
 		if err != nil {
 			fmt.Println(err)
 			break
 		}
-		pl.run(stats)
+		list := pl.new(pstr)
+		pl.track(&list)
+		pl.updateAll(&list)
+		pl.snapshot("snapshot.json")
 		time.Sleep(dur)
 	}
-}
-
-func (c *chat) run(str string) {
-	c.new(str)
-	c.parse()
-}
-
-func (pl *playerList) run(str string) {
-	list := pl.new(str)
-	pl.track(&list)
-	pl.updateAll(&list)
-	pl.snapshot("snapshot.json")
 }

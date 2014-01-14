@@ -3,9 +3,7 @@ gorcon/track - Experimental
 
 track is used for tracking player stats & chat messages. Utilizes gorcon
 to monitor game server activity. Also has a snapshot system which stores a copy of
-the current player list as JSON in the 'snapshot.json' file. Snapshots are used
-to recover playerlist data (including session playtime) in the event of
-application interruption/etc.
+the current player list as JSON in the 'snapshot.json' file.
 
 Example:
 
