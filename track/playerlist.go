@@ -120,8 +120,8 @@ func (pl *playerList) track(list *playerList) {
 			}
 		case len(pl[i].Name) > 0 && len(list[i].Name) == 0: //disconnecting
 			if pl[i].Joined != base {
-				dur := time.Since(pl[i].Joined)
-				fmt.Printf("%s - disconnected (playtime: %s)\n", pl[i].Name, dur.String())
+				dur := strings.Split(time.Since(pl[i].Joined).String(), ".")[0] + "s"
+				fmt.Printf("%s - disconnected (playtime: %s)\n", pl[i].Name, dur)
 			} else {
 				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
 			}
