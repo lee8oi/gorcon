@@ -44,8 +44,11 @@ func Tracker(r *gorcon.Rcon, wait string) {
 			fmt.Println(err)
 			break
 		}
-		c.new(cstr)
-		c.parse()
+		c.add(cstr)
+		if cmdlist := c.parse(); len(cmdlist) > 0 {
+			fmt.Printf("%v", cmdlist)
+		}
+		c.clear()
 		pstr, err := r.Send("bf2cc pl")
 		if err != nil {
 			fmt.Println(err)
