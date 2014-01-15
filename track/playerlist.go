@@ -99,27 +99,39 @@ func (pl *playerList) load(path string) {
 
 //track compares current playerList to new list, slot by slot, to track player connection changes.
 func (pl *playerList) track(list *playerList) {
-	var base time.Time
+	tracking := func(p *player) bool {
+		if p.Joined == *new(time.Time) {
+			return false
+		} else {
+			return true
+		}
+	}
 	for i := 0; i < 16; i++ {
 		switch {
-		case pl[i].Name == list[i].Name: //connecting existing
-			if pl[i].Connected == "0" && list[i].Connected == "1" {
-				if pl[i].Joined == base {
+		case len(pl[i].Connected) == 0 && list[i].Connected == "0": //connecting
+			fmt.Printf("%s: connecting", list[i].Name)
+		case pl[i].Connected == "0" && list[i].Connected == "1": //now connected.
+			if pl[i].Name == list[i].Name {
+				if !tracking(&pl[i]) {
 					fmt.Printf("%s - connected\n", list[i].Name)
 					pl[i].Joined = time.Now()
 				}
-			}
-		case len(pl[i].Name) == 0 && len(list[i].Name) > 0: //connecting
-			pl.update(i, &list[i])
-			if pl[i].Connected == "1" && pl[i].Joined == base {
+			} else {
+				fmt.Printf("(1)%s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
 				pl[i].Joined = time.Now()
-				fmt.Printf("%s - connection pre-existed\n", list[i].Name)
 			}
-			if list[i].Connected == "0" {
-				fmt.Printf("%s - connecting\n", list[i].Name)
+		case pl[i].Connected == "1" && list[i].Connected == "1": //existing connection
+			if pl[i].Name == list[i].Name {
+				if !tracking(&pl[i]) {
+					fmt.Printf("%s: tracking reset\n", pl[i].Name)
+					pl[i].Joined = time.Now()
+				}
+			} else {
+				fmt.Printf("player mismatch %s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
+				pl[i].Joined = time.Now()
 			}
-		case len(pl[i].Name) > 0 && len(list[i].Name) == 0: //disconnecting
-			if pl[i].Joined != base {
+		case pl[i].Connected == "1" && list[i].Connected != "1": //disconnected
+			if tracking(&pl[i]) {
 				dur := strings.Split(time.Since(pl[i].Joined).String(), ".")[0] + "s"
 				fmt.Printf("%s - disconnected (playtime: %s)\n", pl[i].Name, dur)
 			} else {
