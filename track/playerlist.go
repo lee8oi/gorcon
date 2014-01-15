@@ -29,6 +29,10 @@ type player struct {
 	Joined time.Time
 }
 
+func (p *player) duration() string {
+	return strings.Split(time.Since(p.Joined).String(), ".")[0] + "s"
+}
+
 //playerList contains a maximum of 16 player 'slots' as per game server limits.
 type playerList [16]player
 
@@ -113,11 +117,17 @@ func (pl *playerList) track(list *playerList) {
 		case pl[i].Connected == "0" && list[i].Connected == "1": //now connected.
 			if pl[i].Name == list[i].Name {
 				if !tracking(&pl[i]) {
-					fmt.Printf("%s - connected\n", list[i].Name)
+					fmt.Printf("%s: connected\n", list[i].Name)
 					pl[i].Joined = time.Now()
 				}
-			} else {
-				fmt.Printf("(1)%s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
+			} else { //player mismatch
+				//fmt.Printf("(1)%s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
+				if tracking(&pl[i]) {
+					fmt.Printf("%s: disconnected (%s)", pl[i].Name, pl[i].duration())
+				} else {
+					fmt.Printf("%s: disconnected (interrupted)", pl[i].Name)
+				}
+				fmt.Printf("%s: connected\n", list[i].Name)
 				pl[i].Joined = time.Now()
 			}
 		case pl[i].Connected == "1" && list[i].Connected == "1": //existing connection
@@ -126,14 +136,19 @@ func (pl *playerList) track(list *playerList) {
 					fmt.Printf("%s: tracking reset\n", pl[i].Name)
 					pl[i].Joined = time.Now()
 				}
-			} else {
-				fmt.Printf("player mismatch %s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
+			} else { //player mismatch
+				if tracking(&pl[i]) {
+					fmt.Printf("%s: disconnected (%s)", pl[i].Name, pl[i].duration())
+				} else {
+					fmt.Printf("%s: disconnected (interrupted)", pl[i].Name)
+				}
+				fmt.Printf("%s: connected\n", list[i].Name)
 				pl[i].Joined = time.Now()
 			}
 		case pl[i].Connected == "1" && list[i].Connected != "1": //disconnected
 			if tracking(&pl[i]) {
-				dur := strings.Split(time.Since(pl[i].Joined).String(), ".")[0] + "s"
-				fmt.Printf("%s - disconnected (playtime: %s)\n", pl[i].Name, dur)
+				//dur := strings.Split(time.Since(pl[i].Joined).String(), ".")[0] + "s"
+				fmt.Printf("%s - disconnected (%s)\n", pl[i].Name, pl[i].duration())
 			} else {
 				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
 			}
