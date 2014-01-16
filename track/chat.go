@@ -12,7 +12,7 @@ chat and its methods are used to track current server chat messages.
 package track
 
 import (
-	//"fmt"
+	"fmt"
 	//"html"
 	"strings"
 )
@@ -53,13 +53,16 @@ func (c *chat) add(data string) {
 
 //parse existing chat messages. Checks for command prefixes in message text and
 //sends the lines to com channel.
-func (c *chat) parse(com chan string) {
+func (c *chat) parse(pl *playerList, com chan *player) {
 	for _, value := range c.messages {
 		cmd := c.check(value)
+
 		if len(cmd) > 0 {
-			com <- cmd
+			p := pl.player(value.Origin)
+			p.Command = cmd
+			com <- p
 		}
-		//fmt.Println(value)
+		fmt.Println(value)
 	}
 	close(com)
 	c.clear()

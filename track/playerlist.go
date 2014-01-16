@@ -25,7 +25,7 @@ import (
 type player struct {
 	Pid, Name, Profileid, Team, Level, Kit, Score,
 	Kills, Deaths, Alive, Connected, Vip, Nucleus,
-	Ping, Suicides, State string
+	Ping, Suicides, State, Command string
 	Joined time.Time
 }
 
@@ -101,8 +101,17 @@ func (pl *playerList) load(path string) {
 	}
 }
 
-//track compares current playerList to new list to track player connection state.
-//Players are immedidately sent to mon(itor) channel for handling.
+/*
+track compares current playerList to new list to track player connection state.
+Players are immedidately sent to mon(itor) channel for handling.
+
+Connection states are:
+	"initial" - Initial player connection.
+	"connecting" - Currently loading/connecting to game server.
+	"connected" - Player successfully connected to the game server.
+	"established" - Connection is connected & active.
+	"disconnected" - Player has disconnected from the game server.
+*/
 func (pl *playerList) track(str string, mon chan player) {
 	list := pl.new(str)
 	for i := 0; i < 16; i++ {
@@ -156,4 +165,14 @@ func (pl *playerList) update(key int, p *player) {
 		return
 	}
 	pl[key] = *p
+}
+
+func (pl *playerList) player(terms string) (p *player) {
+	for key, value := range pl {
+		if strings.Contains(value.Name, terms) {
+			p = &pl[key]
+			break
+		}
+	}
+	return
 }

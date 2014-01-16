@@ -25,6 +25,7 @@ import (
 type Tracker struct {
 	players  playerList
 	messages chat
+	admins   group
 	Rcon     gorcon.Rcon
 }
 
@@ -40,6 +41,14 @@ func (t *Tracker) Start(wait string) {
 		return
 	}
 	t.players.load("snapshot.json")
+
+	if err := t.admins.load("admins.json"); err != nil {
+		t.admins.Power = 100
+		t.admins.Members = make(map[string]user)
+		t.admins.add("2318009192", "Vegabruda")
+		t.admins.save("admins.json")
+	}
+
 	for {
 		str, err := t.Rcon.Send("bf2cc clientchatbuffer")
 		if err != nil {
@@ -47,8 +56,8 @@ func (t *Tracker) Start(wait string) {
 			break
 		}
 		t.messages.add(str)
-		com := make(chan string)
-		go t.messages.parse(com)
+		com := make(chan *player)
+		go t.messages.parse(&t.players, com)
 		t.command(com)
 
 		str, err = t.Rcon.Send("bf2cc pl")
@@ -85,8 +94,12 @@ func (t *Tracker) monitor(mon chan player) {
 
 //command monitors com channel for commands sent from chat.parse(). Used to handle
 //in-game commands typed by players.
-func (t *Tracker) command(com chan string) {
+func (t *Tracker) command(com chan *player) {
 	for i := range com {
-		fmt.Println("command found: ", i)
+		if t.admins.member(i.Nucleus) {
+			fmt.Println("%s is an admin!", i.Name)
+			fmt.Printf("profileid: %s nucleusid: %s\n", i.Profileid, i.Nucleus)
+		}
+		fmt.Println("command found: ", i.Command)
 	}
 }
