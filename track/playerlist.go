@@ -3,7 +3,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-gorcon/track version 14.1.14 (lee8oi)
+gorcon/track version 14.1.15 (lee8oi)
 
 playerList and its methods are used to track player stats & connection
 changes. Includes a snapshot system used to store the current playerList in a file
@@ -25,7 +25,7 @@ import (
 type player struct {
 	Pid, Name, Profileid, Team, Level, Kit, Score,
 	Kills, Deaths, Alive, Connected, Vip, Nucleus,
-	Ping, Suicides string
+	Ping, Suicides, State string
 	Joined time.Time
 }
 
@@ -101,61 +101,42 @@ func (pl *playerList) load(path string) {
 	}
 }
 
-//track compares current playerList to new list, slot by slot, to track player connection changes.
-func (pl *playerList) track(str string) {
+//track compares current playerList to new list to track player connection state.
+//Players are immedidately sent to mon(itor) channel for handling.
+func (pl *playerList) track(str string, mon chan player) {
 	list := pl.new(str)
-	tracking := func(p *player) bool {
-		if p.Joined == *new(time.Time) {
-			return false
-		} else {
-			return true
-		}
-	}
 	for i := 0; i < 16; i++ {
-		switch {
-		case len(pl[i].Connected) == 0 && list[i].Connected == "0": //connecting
-			fmt.Printf("%s: connecting\n", list[i].Name)
-		case pl[i].Connected == "0" && list[i].Connected == "1": //established
-			if pl[i].Name == list[i].Name {
-				if !tracking(&pl[i]) {
-					fmt.Printf("%s: connected\n", list[i].Name)
+		if pl[i].Name == list[i].Name && len(pl[i].Name) > 0 {
+			if pl[i].Connected == "0" && list[i].Connected == "1" { //connected
+				if pl[i].Joined == *new(time.Time) {
+					pl[i].Joined = time.Now()
+					pl[i].State = "connected"
+				}
+			}
+			if pl[i].Connected == "1" && list[i].Connected == "1" { //established
+				if pl[i].Joined == *new(time.Time) {
+					fmt.Printf("%s: tracker reset\n", pl[i].Name)
 					pl[i].Joined = time.Now()
 				}
-			} else { //player mismatch
-				//fmt.Printf("(1)%s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
-				if tracking(&pl[i]) {
-					fmt.Printf("%s: disconnected (%s)\n", pl[i].Name, pl[i].playtime())
-				} else {
-					fmt.Printf("%s: disconnected (interrupted)\n", pl[i].Name)
-				}
-				fmt.Printf("%s: connected\n", list[i].Name)
-				pl[i].Joined = time.Now()
+				pl[i].State = "established"
 			}
-		case pl[i].Connected == "1" && list[i].Connected == "1": //existing
-			if pl[i].Name == list[i].Name {
-				if !tracking(&pl[i]) {
-					fmt.Printf("%s: tracking reset\n", pl[i].Name)
-					pl[i].Joined = time.Now()
-				}
-			} else { //player mismatch
-				if tracking(&pl[i]) {
-					fmt.Printf("%s: disconnected (%s)\n", pl[i].Name, pl[i].playtime())
-				} else {
-					fmt.Printf("%s: disconnected (interrupted)\n", pl[i].Name)
-				}
-				fmt.Printf("%s: connected\n", list[i].Name)
-				pl[i].Joined = time.Now()
+			if pl[i].Connected == "0" && list[i].Connected == "0" {
+				pl[i].State = "connecting"
 			}
-		case pl[i].Connected == "1" && list[i].Connected != "1": //disconnected
-			if tracking(&pl[i]) {
-				//dur := strings.Split(time.Since(pl[i].Joined).String(), ".")[0] + "s"
-				fmt.Printf("%s - disconnected (%s)\n", pl[i].Name, pl[i].playtime())
-			} else {
-				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
+		} else {
+			if len(pl[i].Name) > 0 && len(list[i].Name) == 0 { //disconnected
+				pl[i].State = "disconnected"
+				mon <- pl[i]
+			}
+			if len(pl[i].Name) == 0 && len(list[i].Name) > 0 { //connecting
+				list[i].State = "initial"
 			}
 		}
 		pl.update(i, &list[i])
+		mon <- pl[i]
 	}
+	close(mon)
+	pl.save("snapshot.json")
 }
 
 //update the player slot at the index specifed by key.

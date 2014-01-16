@@ -26,18 +26,15 @@ Rcon with AutoReconnect and Tracker usage.
 	}
 	
 	func main() {
-		var (
-			r  gorcon.Rcon
-			pl track.PlayerList
-		)
-		if err := r.Connect(config.Address + ":" + config.Port); err != nil {
+		var t track.Tracker
+		if err := t.Rcon.Connect(config.Address + ":" + config.Port); err != nil {
 			fmt.Println(err)
 			return
 		}
-		if err := r.Login(config.Pass); err != nil {
+		if err := t.Rcon.Login(config.Pass); err != nil {
 			fmt.Println(err)
 			return
 		}
-		r.AutoReconnect("30s")
-		track.Tracker(&r, "500ms")
+		t.Rcon.AutoReconnect("30s")
+		t.Start("500ms")
 	}

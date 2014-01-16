@@ -3,7 +3,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-gorcon/track version 14.1.14 (lee8oi)
+gorcon/track version 14.1.15 (lee8oi)
 
 The main track file contains the key Tracking functions that actively retrieve
 data from game server and perform tracking functions.
@@ -49,21 +49,44 @@ func (t *Tracker) Start(wait string) {
 		t.messages.add(str)
 		com := make(chan string)
 		go t.messages.parse(com)
-		for i := range com {
-			fmt.Println(i)
-		}
-		t.messages.clear()
+		t.command(com)
+
 		str, err = t.Rcon.Send("bf2cc pl")
 		if err != nil {
 			fmt.Println(err)
 			break
 		}
-		t.players.track(str)
-		t.players.save("snapshot.json")
+		mon := make(chan player)
+		go t.players.track(str, mon)
+		t.monitor(mon)
+
 		time.Sleep(dur)
 	}
 }
 
-func (t *Tracker) command(cmd string) {
+//monitor channel data from t.players.track(). Used to monitor player connection states.
+func (t *Tracker) monitor(mon chan player) {
+	for i := range mon {
+		//fmt.Println(i.State)
+		switch i.State {
+		case "connected":
+			fmt.Printf("%s has connected\n", i.Name)
+		case "initial":
+			fmt.Printf("%s is connecting\n", i.Name)
+		case "disconnected":
+			if i.Joined == *new(time.Time) {
+				fmt.Printf("%s has disconnected\n", i.Name)
+			} else {
+				fmt.Printf("%s has disconnected (%s)\n", i.Name, i.playtime())
+			}
+		}
+	}
+}
 
+//command monitors com channel for commands sent from chat.parse(). Used to handle
+//in-game commands typed by players.
+func (t *Tracker) command(com chan string) {
+	for i := range com {
+		fmt.Println("command found: ", i)
+	}
 }
