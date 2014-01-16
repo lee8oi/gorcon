@@ -22,41 +22,48 @@ import (
 	"time"
 )
 
+type Tracker struct {
+	players  playerList
+	messages chat
+	Rcon     gorcon.Rcon
+}
+
 /*
-Tracker monitors player stats & chat messages via single gorcon.Rcon connection.
+Start runs the Tracker which monitors player stats & chat messages via Rcon connection.
 Runs in iterations. Sleeps for the specified wait time at the end of each iteration.
 Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h" (see time.ParseDuration doc).
 */
-func Tracker(r *gorcon.Rcon, wait string) {
-	var (
-		pl playerList
-		c  chat
-	)
+func (t *Tracker) Start(wait string) {
 	dur, err := time.ParseDuration(wait)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	pl.load("snapshot.json")
+	t.players.load("snapshot.json")
 	for {
-		cstr, err := r.Send("bf2cc clientchatbuffer")
+		str, err := t.Rcon.Send("bf2cc clientchatbuffer")
 		if err != nil {
 			fmt.Println(err)
 			break
 		}
-		c.add(cstr)
-		if cmdlist := c.parse(); len(cmdlist) > 0 {
-			fmt.Printf("%v", cmdlist)
+		t.messages.add(str)
+		com := make(chan string)
+		go t.messages.parse(com)
+		for i := range com {
+			fmt.Println(i)
 		}
-		c.clear()
-		pstr, err := r.Send("bf2cc pl")
+		t.messages.clear()
+		str, err = t.Rcon.Send("bf2cc pl")
 		if err != nil {
 			fmt.Println(err)
 			break
 		}
-		list := pl.new(pstr)
-		pl.track(&list)
-		pl.snapshot("snapshot.json")
+		t.players.track(str)
+		t.players.save("snapshot.json")
 		time.Sleep(dur)
 	}
+}
+
+func (t *Tracker) command(cmd string) {
+
 }

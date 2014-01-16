@@ -51,16 +51,17 @@ func (c *chat) add(data string) {
 	return
 }
 
-//parse existing chat messages. Returns slice containing any command lines found.
-func (c *chat) parse() (cmdlist []string) {
+//parse existing chat messages. Checks for command prefixes in message text and
+//sends the lines to com channel.
+func (c *chat) parse(com chan string) {
 	for _, value := range c.messages {
 		cmd := c.check(value)
 		if len(cmd) > 0 {
-			cmdlist = append(cmdlist, cmd)
+			com <- cmd
 		}
 		fmt.Println(value)
 	}
-	return
+	close(com)
 }
 
 //check message for command prefixes then return command line.

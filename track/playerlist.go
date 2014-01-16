@@ -29,7 +29,7 @@ type player struct {
 	Joined time.Time
 }
 
-func (p *player) duration() string {
+func (p *player) playtime() string {
 	return strings.Split(time.Since(p.Joined).String(), ".")[0] + "s"
 }
 
@@ -75,8 +75,8 @@ func (pl *playerList) new(data string) (plist playerList) {
 	return
 }
 
-//snapshot saves a copy of the current playerList to file as JSON.
-func (pl *playerList) snapshot(path string) {
+//save a snapshot of the current playerList to file as JSON.
+func (pl *playerList) save(path string) {
 	b, err := json.Marshal(*pl)
 	if err != nil {
 		fmt.Println(err)
@@ -102,7 +102,8 @@ func (pl *playerList) load(path string) {
 }
 
 //track compares current playerList to new list, slot by slot, to track player connection changes.
-func (pl *playerList) track(list *playerList) {
+func (pl *playerList) track(str string) {
+	list := pl.new(str)
 	tracking := func(p *player) bool {
 		if p.Joined == *new(time.Time) {
 			return false
@@ -113,8 +114,8 @@ func (pl *playerList) track(list *playerList) {
 	for i := 0; i < 16; i++ {
 		switch {
 		case len(pl[i].Connected) == 0 && list[i].Connected == "0": //connecting
-			fmt.Printf("%s: connecting", list[i].Name)
-		case pl[i].Connected == "0" && list[i].Connected == "1": //now connected.
+			fmt.Printf("%s: connecting\n", list[i].Name)
+		case pl[i].Connected == "0" && list[i].Connected == "1": //established
 			if pl[i].Name == list[i].Name {
 				if !tracking(&pl[i]) {
 					fmt.Printf("%s: connected\n", list[i].Name)
@@ -123,14 +124,14 @@ func (pl *playerList) track(list *playerList) {
 			} else { //player mismatch
 				//fmt.Printf("(1)%s: tracking lost\n%s: tracking started\n", pl[i].Name, list[i].Name)
 				if tracking(&pl[i]) {
-					fmt.Printf("%s: disconnected (%s)", pl[i].Name, pl[i].duration())
+					fmt.Printf("%s: disconnected (%s)\n", pl[i].Name, pl[i].playtime())
 				} else {
-					fmt.Printf("%s: disconnected (interrupted)", pl[i].Name)
+					fmt.Printf("%s: disconnected (interrupted)\n", pl[i].Name)
 				}
 				fmt.Printf("%s: connected\n", list[i].Name)
 				pl[i].Joined = time.Now()
 			}
-		case pl[i].Connected == "1" && list[i].Connected == "1": //existing connection
+		case pl[i].Connected == "1" && list[i].Connected == "1": //existing
 			if pl[i].Name == list[i].Name {
 				if !tracking(&pl[i]) {
 					fmt.Printf("%s: tracking reset\n", pl[i].Name)
@@ -138,9 +139,9 @@ func (pl *playerList) track(list *playerList) {
 				}
 			} else { //player mismatch
 				if tracking(&pl[i]) {
-					fmt.Printf("%s: disconnected (%s)", pl[i].Name, pl[i].duration())
+					fmt.Printf("%s: disconnected (%s)\n", pl[i].Name, pl[i].playtime())
 				} else {
-					fmt.Printf("%s: disconnected (interrupted)", pl[i].Name)
+					fmt.Printf("%s: disconnected (interrupted)\n", pl[i].Name)
 				}
 				fmt.Printf("%s: connected\n", list[i].Name)
 				pl[i].Joined = time.Now()
@@ -148,7 +149,7 @@ func (pl *playerList) track(list *playerList) {
 		case pl[i].Connected == "1" && list[i].Connected != "1": //disconnected
 			if tracking(&pl[i]) {
 				//dur := strings.Split(time.Since(pl[i].Joined).String(), ".")[0] + "s"
-				fmt.Printf("%s - disconnected (%s)\n", pl[i].Name, pl[i].duration())
+				fmt.Printf("%s - disconnected (%s)\n", pl[i].Name, pl[i].playtime())
 			} else {
 				fmt.Printf("%s - disconnected (interrupted)\n", pl[i].Name)
 			}
