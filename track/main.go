@@ -97,7 +97,7 @@ func (t *Tracker) monitor(mon chan player) {
 func (t *Tracker) command(com chan *player) {
 	for i := range com {
 		if t.admins.member(i.Nucleus) {
-			fmt.Println("%s is an admin!", i.Name)
+			fmt.Printf("%s is an admin! ", i.Name)
 			fmt.Printf("profileid: %s nucleusid: %s\n", i.Profileid, i.Nucleus)
 		}
 		fmt.Println("command found: ", i.Command)
