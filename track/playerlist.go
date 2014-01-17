@@ -3,7 +3,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-gorcon/track version 14.1.15 (lee8oi)
+gorcon/track version 14.1.16 (lee8oi)
 
 playerList and its methods are used to track player stats & connection
 changes. Includes a snapshot system used to store the current playerList in a file
@@ -14,9 +14,7 @@ as JSON (./snapshot.json).
 package track
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"time"
@@ -26,6 +24,7 @@ type player struct {
 	Pid, Name, Profileid, Team, Level, Kit, Score,
 	Kills, Deaths, Alive, Connected, Vip, Nucleus,
 	Ping, Suicides, State, Command string
+
 	Joined time.Time
 }
 
@@ -75,34 +74,8 @@ func (pl *playerList) new(data string) (plist playerList) {
 	return
 }
 
-//save a snapshot of the current playerList to file as JSON.
-func (pl *playerList) save(path string) {
-	b, err := json.Marshal(*pl)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = ioutil.WriteFile(path, b, 0644)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
-//load reads a snapshot file & updates current playerList
-func (pl *playerList) load(path string) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = json.Unmarshal(b, pl)
-	if err != nil {
-		fmt.Println(err)
-	}
-}
-
 /*
-track compares current playerList to new list to track player connection state.
+track compares current playerList to new list to track player connection states.
 Players are immedidately sent to mon(itor) channel for handling.
 
 Connection states are:
@@ -145,7 +118,7 @@ func (pl *playerList) track(str string, mon chan player) {
 		mon <- pl[i]
 	}
 	close(mon)
-	pl.save("snapshot.json")
+	writeJSON("snapshot.json", pl)
 }
 
 //update the player slot at the index specifed by key.
@@ -167,7 +140,7 @@ func (pl *playerList) update(key int, p *player) {
 	pl[key] = *p
 }
 
-func (pl *playerList) player(terms string) (p *player) {
+func (pl *playerList) search(terms string) (p *player) {
 	for key, value := range pl {
 		if strings.Contains(value.Name, terms) {
 			p = &pl[key]
