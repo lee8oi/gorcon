@@ -27,6 +27,9 @@ type player struct {
 	Status    []string
 	Pid, Idle int
 	Joined    time.Time
+
+	//temporary values
+	DamageAssists, PassAssists, CpAssists, CpCaptures, CpDefends, Neutralizes, NeutralizesAssists string
 }
 
 func (p *player) playtime() string {
@@ -62,6 +65,18 @@ func (pl *playerList) new(data string) (plist playerList) {
 			}
 			id, _ := strconv.Atoi(splitLine[0])
 			idle, _ := strconv.Atoi(splitLine[41])
+			/*
+				19  	damage assists
+				20  	passenger assists
+				21  	target assists
+				27  	cp_assists
+				28  	neutralizes
+				29  	neutralizes assists
+				25  	cp_captures
+				26  	cp_defends
+				27  	cp_assists
+				CpCaptures, CpDefends,
+			*/
 			p = player{
 				Pid:       id,
 				Name:      splitLine[1],
@@ -79,6 +94,15 @@ func (pl *playerList) new(data string) (plist playerList) {
 				Ping:      splitLine[3],
 				Idle:      idle,
 				Suicides:  strings.TrimSpace(splitLine[30]),
+
+				//temporary variables
+				DamageAssists:      splitLine[19],
+				PassAssists:        splitLine[20],
+				CpCaptures:         splitLine[25],
+				CpDefends:          splitLine[26],
+				CpAssists:          splitLine[27],
+				Neutralizes:        splitLine[28],
+				NeutralizesAssists: splitLine[29],
 			}
 			plist[id] = p
 		}
@@ -94,12 +118,7 @@ player. Player data is updated and a player pointer is sent to the monitor chann
 func (pl *playerList) parse(str string, mon chan *player) {
 	defer close(mon)
 	list := pl.new(str)
-	//if list.empty() {
-	//	return
-	//}
 	for i := 0; i < 16; i++ {
-		if len(pl[i].Name) == 0 && len(list[i].Name) == 0 {
-		}
 		pl.status(i, &list[i])
 		pl.state(i, &list[i])
 		if pl[i].Connection == "disconnected" {
@@ -149,10 +168,34 @@ func (pl *playerList) state(key int, p *player) {
 	}
 }
 
+type crime struct {
+	killers, assistants, victims, suicides []*player
+}
+
+func (pl *playerList) analyze() *crime {
+	var c crime
+	for key := range pl {
+		for _, value := range pl[key].Status {
+			switch value {
+			case "assisted":
+				c.assistants = append(c.assistants, &pl[key])
+			case "killed":
+				c.killers = append(c.killers, &pl[key])
+			case "died":
+				c.victims = append(c.victims, &pl[key])
+			case "suicided":
+				c.suicides = append(c.suicides, &pl[key])
+			}
+		}
+	}
+	return &c
+}
+
 /*
-status sets the current player status(s).
+status sets the current player status(s) based on stat changes.
 
 Player status's are:
+	"assisted"- assisted a kill
 	"stopped" - is now idle.
 	"resumed" - is no longer idle.
 	"killed"  - has killed someone.
@@ -176,21 +219,48 @@ func (pl *playerList) status(key int, p *player) {
 	if p.Level > pl[key].Level && pl[key].Level != "-1" {
 		p.Status = append(p.Status, "leveled")
 	}
-	if pl[key].Idle == 0 && p.Idle > 0 {
-		p.Status = append(p.Status, "stopped")
-	}
-	if pl[key].Idle > 0 && p.Idle == 0 {
-		fmt.Println(pl[key].Idle)
-		p.Status = append(p.Status, "resumed")
-	}
+	//if pl[key].Idle == 0 && p.Idle > 0 {
+	//	p.Status = append(p.Status, "stopped")
+	//}
+	//if pl[key].Idle > 0 && p.Idle == 0 {
+	//	p.Status = append(p.Status, "resumed")
+	//}
 	if p.Kills > pl[key].Kills {
-		p.Status = append(p.Status, "killed")
+		if p.DamageAssists > pl[key].DamageAssists {
+			p.Status = append(p.Status, "assisted")
+		} else {
+			p.Status = append(p.Status, "killed")
+		}
 	}
-	if pl[key].Alive == "1" && p.Alive == "0" {
+	if p.Deaths > pl[key].Deaths {
 		p.Status = append(p.Status, "died")
 	}
 	if p.Suicides > pl[key].Suicides {
 		p.Status = append(p.Status, "suicided")
+	}
+
+	//fmt.Println(p.Name, p.DamageAssists, p.PassAssists, p.CpAssists, p.Neutralizes, p.NeutralizesAssists)
+	//if pl[key].DamageAssists > p.DamageAssists {
+	//	fmt.Printf("%s DamageAssists %s = %s (kills %s)\n", p.Name, pl[key].DamageAssists, p.DamageAssists, p.Kills)
+	//	fmt.Printf("%s kills before: %s & kills after: %s\n", p.Name, pl[key].Kills, p.Kills)
+	//}
+	if pl[key].PassAssists != p.PassAssists {
+		fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
+	}
+	if pl[key].CpAssists != p.CpAssists {
+		fmt.Printf("%s CpAssists change %s to %s\n", p.Name, pl[key].CpAssists, p.CpAssists)
+	}
+	if pl[key].Neutralizes != p.Neutralizes {
+		fmt.Printf("%s Neutralizes change %s to %s\n", p.Name, pl[key].Neutralizes, p.Neutralizes)
+	}
+	if pl[key].NeutralizesAssists != p.NeutralizesAssists {
+		fmt.Printf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists)
+	}
+	if pl[key].CpCaptures > p.CpCaptures {
+		fmt.Printf("%s CpCaptures change %s to %s\n", p.Name, pl[key].CpCaptures, p.CpCaptures)
+	}
+	if pl[key].CpDefends != p.CpDefends {
+		fmt.Printf("%s CpDefends change %s to %s\n", p.Name, pl[key].CpDefends, p.CpDefends)
 	}
 }
 
@@ -212,6 +282,15 @@ func (pl *playerList) update(key int, p *player) {
 		pl[key].Score = p.Score
 		pl[key].Suicides = p.Suicides
 		pl[key].Idle = p.Idle
+
+		//temporary
+		pl[key].DamageAssists = p.DamageAssists
+		pl[key].PassAssists = p.PassAssists
+		pl[key].CpAssists = p.CpAssists
+		pl[key].CpDefends = p.CpDefends
+		pl[key].CpCaptures = p.CpCaptures
+		pl[key].Neutralizes = p.Neutralizes
+		pl[key].NeutralizesAssists = p.NeutralizesAssists
 		return
 	}
 	pl[key] = *p

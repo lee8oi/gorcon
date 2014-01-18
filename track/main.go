@@ -119,12 +119,15 @@ func (t *Tracker) monitor(mon chan *player) {
 				fmt.Printf("%s has disconnected (%s)\n", i.Name, i.playtime())
 			}
 		}
+
 		for _, value := range i.Status {
 			switch value {
+			case "assisted":
+				//fmt.Printf("%s has assisted a kill.\n", i.Name)
 			case "killed":
-				fmt.Printf("%s has killed someone!\n", i.Name)
+				//fmt.Printf("%s has killed someone!\n", i.Name)
 			case "died":
-				fmt.Printf("%s has died!\n", i.Name)
+				//fmt.Printf("%s has died!\n", i.Name)
 			case "stopped":
 				fmt.Printf("%s has stopped moving.\n", i.Name)
 			case "suicided":
@@ -138,6 +141,51 @@ func (t *Tracker) monitor(mon chan *player) {
 	}
 	if err := writeJSON("players.json", t.players); err != nil {
 		fmt.Println(err)
+	}
+	c := t.players.analyze()
+	victims := len(c.victims)
+	killers := len(c.killers)
+	assistants := len(c.assistants)
+	suicides := len(c.suicides)
+	if killers > 0 && victims > 0 {
+		if killers == 1 && victims == 1 {
+			fmt.Printf("%s has killed %s! ", c.killers[0].Name, c.victims[0].Name)
+			if assistants == 1 {
+				fmt.Printf("Assisted by %s", c.assistants[0].Name)
+			}
+			if assistants > 1 {
+				fmt.Printf("With %s assistants: ", assistants)
+				for i := range c.assistants {
+					fmt.Printf("%s ", c.assistants[i].Name)
+				}
+			}
+			fmt.Printf("\n")
+		} else {
+			fmt.Printf("%d killer(s) / %d victims\n", killers, victims)
+			fmt.Printf("killers: ")
+			for i := range c.killers {
+				fmt.Printf("%s ", c.killers[i].Name)
+			}
+			fmt.Printf("\n")
+			if victims > 0 {
+				fmt.Printf("victims: ")
+				for i := range c.victims {
+					fmt.Printf("%s ", c.victims[i].Name)
+				}
+				fmt.Printf("\n")
+			}
+			if assistants > 0 {
+				fmt.Printf("assists: ")
+				for i := range c.assistants {
+					fmt.Printf("%s ", c.assistants[i].Name)
+				}
+				fmt.Printf("\n")
+			}
+		}
+
+	}
+	if suicides != 0 {
+		fmt.Printf("%d deaths were self inflicted.", suicides)
 	}
 }
 
