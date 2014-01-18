@@ -3,7 +3,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-gorcon/track version 14.1.16 (lee8oi)
+gorcon/track (lee8oi)
 
 chat and its methods are used to track current server chat messages.
 */
@@ -17,7 +17,7 @@ import (
 )
 
 type message struct {
-	Origin, Team, Type, Time, Text string
+	Pid, Origin, Team, Type, Time, Text string
 }
 
 func parseChat(data string, com chan *message) {
@@ -33,6 +33,7 @@ func parseChat(data string, com chan *message) {
 				//elem[5] = html.EscapeString(elem[5])
 			}
 			m := message{
+				Pid:    elem[0],
 				Origin: elem[1],
 				Team:   elem[2],
 				Type:   elem[3],
@@ -42,7 +43,7 @@ func parseChat(data string, com chan *message) {
 			if len(m.Text) > 0 && strings.IndexAny(m.Text, "!/|") == 0 {
 				com <- &m
 			}
-			fmt.Println(elem[0], m)
+			fmt.Println(m)
 		}
 	}
 	close(com)

@@ -3,7 +3,7 @@ This Source Code Form is subject to the terms of the Mozilla Public
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-gorcon/track version 14.1.16 (lee8oi)
+gorcon/track (lee8oi)
 
 playerList and its methods are used to track player stats & connection
 changes. Includes a snapshot system used to store the current playerList in a file
@@ -21,11 +21,12 @@ import (
 )
 
 type player struct {
-	Pid, Name, Profileid, Team, Level, Kit, Score,
+	Name, Profileid, Team, Level, Kit, Score,
 	Kills, Deaths, Alive, Connected, Vip, Nucleus,
-	Ping, Suicides, State, Command string
-
-	Joined time.Time
+	Ping, Suicides, Connection string
+	Status    []string
+	Pid, Idle int
+	Joined    time.Time
 }
 
 func (p *player) playtime() string {
@@ -34,6 +35,16 @@ func (p *player) playtime() string {
 
 //playerList contains a maximum of 16 player 'slots' as per game server limits.
 type playerList [16]player
+
+//empty returns true if all slots are 'empty'
+func (pl *playerList) empty() bool {
+	for i := 0; i < 16; i++ {
+		if pl[i].Name != "" {
+			return false
+		}
+	}
+	return true
+}
 
 //new takes a 'bf2cc pl' result string and returns a new playerList.
 func (pl *playerList) new(data string) (plist playerList) {
@@ -49,8 +60,10 @@ func (pl *playerList) new(data string) (plist playerList) {
 			if splitLine[34] != "none" {
 				kit = strings.Split(splitLine[34], "_")[1]
 			}
+			id, _ := strconv.Atoi(splitLine[0])
+			idle, _ := strconv.Atoi(splitLine[41])
 			p = player{
-				Pid:       splitLine[0],
+				Pid:       id,
 				Name:      splitLine[1],
 				Profileid: splitLine[10],
 				Team:      splitLine[2],
@@ -64,10 +77,10 @@ func (pl *playerList) new(data string) (plist playerList) {
 				Vip:       splitLine[46],
 				Nucleus:   splitLine[47],
 				Ping:      splitLine[3],
+				Idle:      idle,
 				Suicides:  strings.TrimSpace(splitLine[30]),
 			}
-			key, _ := strconv.Atoi(p.Pid)
-			plist[key] = p
+			plist[id] = p
 		}
 		return
 	}
@@ -75,8 +88,51 @@ func (pl *playerList) new(data string) (plist playerList) {
 }
 
 /*
-track compares current playerList to new list to track player connection states.
-Players are immedidately sent to mon(itor) channel for handling.
+track compares current playerList to new list to track player connection states
+and status's. Data pointers are immedidately sent to mon(itor) channel for handling.
+*/
+func (pl *playerList) track(str string, mon chan *player) {
+	list := pl.new(str)
+	for i := 0; i < 16; i++ {
+		//if pl[i].Name == list[i].Name && len(pl[i].Name) > 0 {
+		//	if pl[i].Connected == "0" && list[i].Connected == "1" { //connected
+		//		if pl[i].Joined == *new(time.Time) {
+		//			pl[i].Joined = time.Now()
+		//			pl[i].Connection = "connected"
+		//		}
+		//	}
+		//	if pl[i].Connected == "1" && list[i].Connected == "1" { //established
+		//		if pl[i].Joined == *new(time.Time) {
+		//			fmt.Printf("%s: tracker reset\n", pl[i].Name)
+		//			pl[i].Joined = time.Now()
+		//		}
+		//		pl[i].Connection = "established"
+		//	}
+		//	if pl[i].Connected == "0" && list[i].Connected == "0" {
+		//		pl[i].Connection = "connecting"
+		//	}
+		//} else {
+		//	if len(pl[i].Name) > 0 && len(list[i].Name) == 0 { //disconnected
+		//		pl[i].Connection = "disconnected"
+		//		mon <- pl[i]
+		//	}
+		//	if len(pl[i].Name) == 0 && len(list[i].Name) > 0 { //connecting
+		//		list[i].Connection = "initial"
+		//	}
+		//}
+		pl.status(i, &list[i])
+		pl.state(i, &list[i])
+		if pl[i].Connection == "disconnected" {
+			mon <- &pl[i]
+		}
+		pl.update(i, &list[i])
+		mon <- &pl[i]
+	}
+	close(mon)
+}
+
+/*
+state sets player connection state.
 
 Connection states are:
 	"initial" - Initial player connection.
@@ -85,40 +141,67 @@ Connection states are:
 	"established" - Connection is connected & active.
 	"disconnected" - Player has disconnected from the game server.
 */
-func (pl *playerList) track(str string, mon chan player) {
-	list := pl.new(str)
-	for i := 0; i < 16; i++ {
-		if pl[i].Name == list[i].Name && len(pl[i].Name) > 0 {
-			if pl[i].Connected == "0" && list[i].Connected == "1" { //connected
-				if pl[i].Joined == *new(time.Time) {
-					pl[i].Joined = time.Now()
-					pl[i].State = "connected"
-				}
-			}
-			if pl[i].Connected == "1" && list[i].Connected == "1" { //established
-				if pl[i].Joined == *new(time.Time) {
-					fmt.Printf("%s: tracker reset\n", pl[i].Name)
-					pl[i].Joined = time.Now()
-				}
-				pl[i].State = "established"
-			}
-			if pl[i].Connected == "0" && list[i].Connected == "0" {
-				pl[i].State = "connecting"
-			}
-		} else {
-			if len(pl[i].Name) > 0 && len(list[i].Name) == 0 { //disconnected
-				pl[i].State = "disconnected"
-				mon <- pl[i]
-			}
-			if len(pl[i].Name) == 0 && len(list[i].Name) > 0 { //connecting
-				list[i].State = "initial"
+func (pl *playerList) state(key int, p *player) {
+	if pl[key].Name == p.Name && len(pl[key].Name) > 0 {
+		if pl[key].Connected == "0" && p.Connected == "1" { //connected
+			if pl[key].Joined == *new(time.Time) {
+				pl[key].Joined = time.Now()
+				pl[key].Connection = "connected"
 			}
 		}
-		pl.update(i, &list[i])
-		mon <- pl[i]
+		if pl[key].Connected == "1" && p.Connected == "1" { //established
+			if pl[key].Joined == *new(time.Time) {
+				fmt.Printf("%s: tracker reset\n", pl[key].Name)
+				pl[key].Joined = time.Now()
+			} else {
+				pl[key].Connection = "established"
+			}
+		}
+		if pl[key].Connected == "0" && p.Connected == "0" {
+			pl[key].Connection = "connecting"
+		}
+	} else {
+		if len(pl[key].Name) > 0 && len(p.Name) == 0 { //disconnected
+			pl[key].Connection = "disconnected"
+		}
+		if len(pl[key].Name) == 0 && len(p.Name) > 0 { //connecting
+			p.Connection = "initial"
+		}
 	}
-	close(mon)
-	writeJSON("snapshot.json", pl)
+}
+
+//status sets player status.
+//Examples: "active", "stopped", "resumed", "killed", "died", "suicided",
+//"promoted", "demoted", and "leveled".
+func (pl *playerList) status(key int, p *player) {
+	if len(p.Name) == 0 || len(pl[key].Name) == 0 {
+		return
+	}
+	if pl[key].Vip != p.Vip {
+		if p.Vip == "1" {
+			p.Status = append(p.Status, "promoted")
+		} else {
+			p.Status = append(p.Status, "demoted")
+		}
+	}
+	if p.Level > pl[key].Level {
+		p.Status = append(p.Status, "leveled")
+	}
+	if pl[key].Idle == 0 && p.Idle > 0 {
+		p.Status = append(p.Status, "stopped")
+	}
+	if pl[key].Idle > 0 && p.Idle == 0 {
+		p.Status = append(p.Status, "resumed")
+	}
+	if p.Kills > pl[key].Kills {
+		p.Status = append(p.Status, "killed")
+	}
+	if pl[key].Alive == "1" && p.Alive == "0" {
+		p.Status = append(p.Status, "died")
+	}
+	if p.Suicides > pl[key].Suicides {
+		p.Status = append(p.Status, "suicided")
+	}
 }
 
 //update the player slot at the index specifed by key.
@@ -126,15 +209,17 @@ func (pl *playerList) track(str string, mon chan player) {
 //are updated.
 func (pl *playerList) update(key int, p *player) {
 	if len(p.Name) > 0 && pl[key].Name == p.Name {
-		pl[key].Alive = p.Alive
 		pl[key].Connected = p.Connected
+		pl[key].Status = p.Status
+		pl[key].Alive = p.Alive
+		pl[key].Vip = p.Vip
 		pl[key].Deaths = p.Deaths
 		pl[key].Kills = p.Kills
 		pl[key].Level = p.Level
 		pl[key].Ping = p.Ping
 		pl[key].Score = p.Score
 		pl[key].Suicides = p.Suicides
-		pl[key].Vip = p.Vip
+		pl[key].Idle = p.Idle
 		return
 	}
 	pl[key] = *p
