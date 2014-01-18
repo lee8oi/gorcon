@@ -129,64 +129,30 @@ func (t *Tracker) monitor(mon chan *player) {
 			case "died":
 				//fmt.Printf("%s has died!\n", i.Name)
 			case "stopped":
-				fmt.Printf("%s has stopped moving.\n", i.Name)
+				//fmt.Printf("%s has stopped moving.\n", i.Name)
 			case "suicided":
-				fmt.Printf("%s has commit suicide!\n", i.Name)
+				//fmt.Printf("%s has commit suicide!\n", i.Name)
 			case "leveled":
 				fmt.Printf("%s has leveled up!\n", i.Name)
 			case "resumed":
-				fmt.Printf("%s is moving again.\n", i.Name)
+				//fmt.Printf("%s is moving again.\n", i.Name)
+			case "promoted":
+				fmt.Printf("%s has been promoted to vip.", i.Name)
+			case "demoted":
+				fmt.Printf("%s has been demoted from vip.", i.Name)
+			case "captured":
+				fmt.Printf("%s has captured a control point!\n", i.Name)
+			case "defended":
+				fmt.Printf("%s has defended a control point!\n", i.Name)
+			case "neutralized":
+				fmt.Printf("%s has neutralized a control point!\n", i.Name)
 			}
 		}
 	}
 	if err := writeJSON("players.json", t.players); err != nil {
 		fmt.Println(err)
 	}
-	c := t.players.analyze()
-	victims := len(c.victims)
-	killers := len(c.killers)
-	assistants := len(c.assistants)
-	suicides := len(c.suicides)
-	if killers > 0 && victims > 0 {
-		if killers == 1 && victims == 1 {
-			fmt.Printf("%s has killed %s! ", c.killers[0].Name, c.victims[0].Name)
-			if assistants == 1 {
-				fmt.Printf("Assisted by %s", c.assistants[0].Name)
-			}
-			if assistants > 1 {
-				fmt.Printf("With %s assistants: ", assistants)
-				for i := range c.assistants {
-					fmt.Printf("%s ", c.assistants[i].Name)
-				}
-			}
-			fmt.Printf("\n")
-		} else {
-			fmt.Printf("%d killer(s) / %d victims\n", killers, victims)
-			fmt.Printf("killers: ")
-			for i := range c.killers {
-				fmt.Printf("%s ", c.killers[i].Name)
-			}
-			fmt.Printf("\n")
-			if victims > 0 {
-				fmt.Printf("victims: ")
-				for i := range c.victims {
-					fmt.Printf("%s ", c.victims[i].Name)
-				}
-				fmt.Printf("\n")
-			}
-			if assistants > 0 {
-				fmt.Printf("assists: ")
-				for i := range c.assistants {
-					fmt.Printf("%s ", c.assistants[i].Name)
-				}
-				fmt.Printf("\n")
-			}
-		}
-
-	}
-	if suicides != 0 {
-		fmt.Printf("%d deaths were self inflicted.", suicides)
-	}
+	t.players.analyze()
 }
 
 //command monitors com channel for messages sent from chat.parse(). Used to handle

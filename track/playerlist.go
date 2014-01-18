@@ -136,59 +136,28 @@ Connection states are:
 	"initial" - Initial player connection.
 	"connecting" - Currently loading/connecting to game server.
 	"connected" - Player successfully connected to the game server.
+	"interrupted" - Player connection was interrupted before completion.
 	"established" - Connection is connected & active.
 	"disconnected" - Player has disconnected from the game server.
 */
 func (pl *playerList) state(key int, p *player) {
-	if pl[key].Name == p.Name && len(pl[key].Name) > 0 {
-		if pl[key].Connected == "0" && p.Connected == "1" { //connected
-			if pl[key].Joined == *new(time.Time) {
-				pl[key].Joined = time.Now()
-				pl[key].Connection = "connected"
-			}
-		}
-		if pl[key].Connected == "1" && p.Connected == "1" { //established
-			if pl[key].Joined == *new(time.Time) {
-				fmt.Printf("%s: tracker reset\n", pl[key].Name)
-				pl[key].Joined = time.Now()
-			} else {
-				pl[key].Connection = "established"
-			}
-		}
-		if pl[key].Connected == "0" && p.Connected == "0" {
-			pl[key].Connection = "connecting"
-		}
-	} else {
-		if len(pl[key].Name) > 0 && len(p.Name) == 0 { //disconnected
-			pl[key].Connection = "disconnected"
-		}
-		if len(pl[key].Name) == 0 && len(p.Name) > 0 { //connecting
-			p.Connection = "initial"
-		}
+	switch {
+	case pl[key].Connected == "" && p.Connected == "0":
+		p.Connection = "initial"
+	case pl[key].Connected == "0" && p.Connected == "0":
+		pl[key].Connection = "connecting"
+	case pl[key].Connected == "0" && p.Connected == "":
+		pl[key].Connection = "interrupted"
+	case pl[key].Connected == "1" && p.Connected == "":
+		pl[key].Connection = "disconnected"
+	case pl[key].Connected == "0" && p.Connected == "1":
+		pl[key].Connection = "connected"
+	case pl[key].Connected == "1" && p.Connected == "1":
+		pl[key].Connection = "established"
 	}
-}
-
-type crime struct {
-	killers, assistants, victims, suicides []*player
-}
-
-func (pl *playerList) analyze() *crime {
-	var c crime
-	for key := range pl {
-		for _, value := range pl[key].Status {
-			switch value {
-			case "assisted":
-				c.assistants = append(c.assistants, &pl[key])
-			case "killed":
-				c.killers = append(c.killers, &pl[key])
-			case "died":
-				c.victims = append(c.victims, &pl[key])
-			case "suicided":
-				c.suicides = append(c.suicides, &pl[key])
-			}
-		}
+	if p.Connected == "1" || pl[key].Connected == "1" && pl[key].Joined == *new(time.Time) {
+		pl[key].Joined = time.Now()
 	}
-	return &c
 }
 
 /*
@@ -204,63 +173,53 @@ Player status's are:
 	"promoted"- is now a vip.
 	"demoted" - is no longer a vip.
 	"leveled" - has leveled up.
+	"neutralized" - neutralized a control point
+	"defended"    - defended a control point
+	"captured"	  - captured a control point
 */
 func (pl *playerList) status(key int, p *player) {
 	if len(p.Name) == 0 || len(pl[key].Name) == 0 {
 		return
 	}
-	if pl[key].Vip != p.Vip {
+	switch {
+	case pl[key].Vip != p.Vip:
 		if p.Vip == "1" {
 			p.Status = append(p.Status, "promoted")
 		} else {
 			p.Status = append(p.Status, "demoted")
 		}
-	}
-	if p.Level > pl[key].Level && pl[key].Level != "-1" {
+	case p.Level > pl[key].Level && pl[key].Level != "-1":
 		p.Status = append(p.Status, "leveled")
-	}
-	//if pl[key].Idle == 0 && p.Idle > 0 {
-	//	p.Status = append(p.Status, "stopped")
-	//}
-	//if pl[key].Idle > 0 && p.Idle == 0 {
-	//	p.Status = append(p.Status, "resumed")
-	//}
-	if p.Kills > pl[key].Kills {
+	case pl[key].Idle == 0 && p.Idle > 0:
+		p.Status = append(p.Status, "stopped")
+	case pl[key].Idle > 0 && p.Idle == 0:
+		p.Status = append(p.Status, "resumed")
+	case p.Kills > pl[key].Kills:
 		if p.DamageAssists > pl[key].DamageAssists {
 			p.Status = append(p.Status, "assisted")
 		} else {
 			p.Status = append(p.Status, "killed")
 		}
-	}
-	if p.Deaths > pl[key].Deaths {
+	case p.Deaths > pl[key].Deaths:
 		p.Status = append(p.Status, "died")
-	}
-	if p.Suicides > pl[key].Suicides {
+	case p.Suicides > pl[key].Suicides:
 		p.Status = append(p.Status, "suicided")
-	}
+	case pl[key].Neutralizes != p.Neutralizes:
+		p.Status = append(p.Status, "neutralized")
+	case p.CpCaptures > pl[key].CpCaptures:
+		p.Status = append(p.Status, "captured")
+	case p.CpDefends > pl[key].CpDefends:
+		p.Status = append(p.Status, "defended")
 
-	//fmt.Println(p.Name, p.DamageAssists, p.PassAssists, p.CpAssists, p.Neutralizes, p.NeutralizesAssists)
-	//if pl[key].DamageAssists > p.DamageAssists {
-	//	fmt.Printf("%s DamageAssists %s = %s (kills %s)\n", p.Name, pl[key].DamageAssists, p.DamageAssists, p.Kills)
-	//	fmt.Printf("%s kills before: %s & kills after: %s\n", p.Name, pl[key].Kills, p.Kills)
-	//}
+	}
 	if pl[key].PassAssists != p.PassAssists {
 		fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
 	}
 	if pl[key].CpAssists != p.CpAssists {
 		fmt.Printf("%s CpAssists change %s to %s\n", p.Name, pl[key].CpAssists, p.CpAssists)
 	}
-	if pl[key].Neutralizes != p.Neutralizes {
-		fmt.Printf("%s Neutralizes change %s to %s\n", p.Name, pl[key].Neutralizes, p.Neutralizes)
-	}
 	if pl[key].NeutralizesAssists != p.NeutralizesAssists {
 		fmt.Printf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists)
-	}
-	if pl[key].CpCaptures > p.CpCaptures {
-		fmt.Printf("%s CpCaptures change %s to %s\n", p.Name, pl[key].CpCaptures, p.CpCaptures)
-	}
-	if pl[key].CpDefends != p.CpDefends {
-		fmt.Printf("%s CpDefends change %s to %s\n", p.Name, pl[key].CpDefends, p.CpDefends)
 	}
 }
 
@@ -282,14 +241,14 @@ func (pl *playerList) update(key int, p *player) {
 		pl[key].Score = p.Score
 		pl[key].Suicides = p.Suicides
 		pl[key].Idle = p.Idle
-
-		//temporary
 		pl[key].DamageAssists = p.DamageAssists
-		pl[key].PassAssists = p.PassAssists
-		pl[key].CpAssists = p.CpAssists
 		pl[key].CpDefends = p.CpDefends
 		pl[key].CpCaptures = p.CpCaptures
 		pl[key].Neutralizes = p.Neutralizes
+		//temporary
+
+		pl[key].PassAssists = p.PassAssists
+		pl[key].CpAssists = p.CpAssists
 		pl[key].NeutralizesAssists = p.NeutralizesAssists
 		return
 	}
@@ -304,4 +263,77 @@ func (pl *playerList) search(terms string) (p *player) {
 		}
 	}
 	return
+}
+
+type crime struct {
+	killers, assistants, victims, suicides []*player
+}
+
+func (pl *playerList) analyze() {
+	var c crime
+	for key := range pl {
+		for _, value := range pl[key].Status {
+			switch value {
+			case "assisted":
+				c.assistants = append(c.assistants, &pl[key])
+			case "killed":
+				c.killers = append(c.killers, &pl[key])
+			case "died":
+				c.victims = append(c.victims, &pl[key])
+			case "suicided":
+				c.suicides = append(c.suicides, &pl[key])
+			}
+		}
+	}
+	victims := len(c.victims)
+	killers := len(c.killers)
+	assistants := len(c.assistants)
+	suicides := len(c.suicides)
+	if killers > 0 && victims > 0 {
+		switch {
+		case killers == 1 && victims == 1:
+			fmt.Printf("%s has killed %s! ", c.killers[0].Name, c.victims[0].Name)
+			if assistants > 0 {
+				fmt.Printf("Assisted by ")
+				for i := range c.assistants {
+					fmt.Printf("%s ", c.assistants[i].Name)
+				}
+			}
+			fmt.Printf("\n")
+		case killers == 1 && victims > 1:
+			fmt.Printf("%s scored %d kills: ", c.killers[0].Name, victims)
+			for i := range c.victims {
+				fmt.Printf("%s ", c.victims[i].Name)
+			}
+			fmt.Printf("\n")
+		case c.killers[0].Name == c.victims[0].Name && c.killers[1].Name == c.victims[1].Name:
+			fmt.Printf("%s and %s killed each other.\n", c.killers[0].Name, c.killers[1].Name)
+		case killers > 1 && victims > 1:
+			fmt.Printf("%d killers with %d victims!\n", killers, victims)
+			fmt.Printf("killers")
+			for i := range c.killers {
+				fmt.Printf(" %s", c.killers[i].Name)
+			}
+			fmt.Printf(" killed")
+			for i := range c.victims {
+				fmt.Printf(" %s", c.victims[i].Name)
+			}
+			fmt.Printf(".")
+			if assistants > 0 {
+				fmt.Printf("Assisted by ")
+				for i := range c.assistants {
+					fmt.Printf("%s ", c.assistants[i].Name)
+				}
+			}
+			fmt.Printf("\n")
+		case suicides == 1:
+			fmt.Printf("%s killed himself", c.suicides[0])
+		case suicides > 1:
+			fmt.Printf("%d fools killed themselves: ", suicides)
+			for i := range c.suicides {
+				fmt.Printf("%s", c.suicides[i].Name)
+			}
+			fmt.Printf("\n")
+		}
+	}
 }
