@@ -91,11 +91,6 @@ func (t *Tracker) Start(wait string) {
 		go parseChat(str, com)
 		t.command(com)
 
-		//if t.game.Players == "0" && t.players.empty() {
-		//	//skip player tracking if theres no players.
-		//	continue
-		//}
-
 		str, err = t.Rcon.Send("bf2cc pl")
 		if err != nil {
 			fmt.Println(err)
