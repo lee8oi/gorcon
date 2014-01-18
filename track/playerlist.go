@@ -88,38 +88,18 @@ func (pl *playerList) new(data string) (plist playerList) {
 }
 
 /*
-track compares current playerList to new list to track player connection states
-and status's. Data pointers are immedidately sent to mon(itor) channel for handling.
+parse parses 'bf2cc pl' data string and uses it to track connection states and status's for each
+player. Player data is updated and a player pointer is sent to the monitor channel for handling.
 */
-func (pl *playerList) track(str string, mon chan *player) {
+func (pl *playerList) parse(str string, mon chan *player) {
+	defer close(mon)
 	list := pl.new(str)
+	//if list.empty() {
+	//	return
+	//}
 	for i := 0; i < 16; i++ {
-		//if pl[i].Name == list[i].Name && len(pl[i].Name) > 0 {
-		//	if pl[i].Connected == "0" && list[i].Connected == "1" { //connected
-		//		if pl[i].Joined == *new(time.Time) {
-		//			pl[i].Joined = time.Now()
-		//			pl[i].Connection = "connected"
-		//		}
-		//	}
-		//	if pl[i].Connected == "1" && list[i].Connected == "1" { //established
-		//		if pl[i].Joined == *new(time.Time) {
-		//			fmt.Printf("%s: tracker reset\n", pl[i].Name)
-		//			pl[i].Joined = time.Now()
-		//		}
-		//		pl[i].Connection = "established"
-		//	}
-		//	if pl[i].Connected == "0" && list[i].Connected == "0" {
-		//		pl[i].Connection = "connecting"
-		//	}
-		//} else {
-		//	if len(pl[i].Name) > 0 && len(list[i].Name) == 0 { //disconnected
-		//		pl[i].Connection = "disconnected"
-		//		mon <- pl[i]
-		//	}
-		//	if len(pl[i].Name) == 0 && len(list[i].Name) > 0 { //connecting
-		//		list[i].Connection = "initial"
-		//	}
-		//}
+		if len(pl[i].Name) == 0 && len(list[i].Name) == 0 {
+		}
 		pl.status(i, &list[i])
 		pl.state(i, &list[i])
 		if pl[i].Connection == "disconnected" {
@@ -128,7 +108,6 @@ func (pl *playerList) track(str string, mon chan *player) {
 		pl.update(i, &list[i])
 		mon <- &pl[i]
 	}
-	close(mon)
 }
 
 /*
@@ -170,9 +149,19 @@ func (pl *playerList) state(key int, p *player) {
 	}
 }
 
-//status sets player status.
-//Examples: "active", "stopped", "resumed", "killed", "died", "suicided",
-//"promoted", "demoted", and "leveled".
+/*
+status sets the current player status(s).
+
+Player status's are:
+	"stopped" - is now idle.
+	"resumed" - is no longer idle.
+	"killed"  - has killed someone.
+	"died"    - has died.
+	"suicided"- has commit suicide.
+	"promoted"- is now a vip.
+	"demoted" - is no longer a vip.
+	"leveled" - has leveled up.
+*/
 func (pl *playerList) status(key int, p *player) {
 	if len(p.Name) == 0 || len(pl[key].Name) == 0 {
 		return
@@ -184,13 +173,14 @@ func (pl *playerList) status(key int, p *player) {
 			p.Status = append(p.Status, "demoted")
 		}
 	}
-	if p.Level > pl[key].Level {
+	if p.Level > pl[key].Level && pl[key].Level != "-1" {
 		p.Status = append(p.Status, "leveled")
 	}
 	if pl[key].Idle == 0 && p.Idle > 0 {
 		p.Status = append(p.Status, "stopped")
 	}
 	if pl[key].Idle > 0 && p.Idle == 0 {
+		fmt.Println(pl[key].Idle)
 		p.Status = append(p.Status, "resumed")
 	}
 	if p.Kills > pl[key].Kills {
@@ -204,9 +194,11 @@ func (pl *playerList) status(key int, p *player) {
 	}
 }
 
-//update the player slot at the index specifed by key.
-//After initial update: only elements that can potentially change during playtime
-//are updated.
+/*
+update the player slot at the index specifed by key.
+After initial update: only elements that can potentially change during playtime
+are updated.
+*/
 func (pl *playerList) update(key int, p *player) {
 	if len(p.Name) > 0 && pl[key].Name == p.Name {
 		pl[key].Connected = p.Connected

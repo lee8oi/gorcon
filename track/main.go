@@ -102,7 +102,7 @@ func (t *Tracker) Start(wait string) {
 			break
 		}
 		mon := make(chan *player)
-		go t.players.track(str, mon)
+		go t.players.parse(str, mon)
 		t.monitor(mon)
 
 		time.Sleep(dur)
