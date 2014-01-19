@@ -136,8 +136,6 @@ func (pl *playerList) state(key int, p *player) {
 		pl[key].Connection = "connecting"
 	case pl[key].Connected == "0" && p.Connected == "":
 		pl[key].Connection = "interrupted"
-	case pl[key].Connected == "1" && p.Connected == "":
-		pl[key].Connection = "disconnected"
 	case pl[key].Connected == "0" && p.Connected == "1":
 		if pl[key].Joined == *new(time.Time) {
 			pl[key].Joined = time.Now()
@@ -148,7 +146,10 @@ func (pl *playerList) state(key int, p *player) {
 			pl[key].Joined = time.Now()
 		}
 		pl[key].Connection = "established"
+	case pl[key].Connected != "" && p.Connected != "1":
+		pl[key].Connection = "disconnected"
 	}
+
 }
 
 /*
@@ -283,44 +284,44 @@ func (pl *playerList) investigate() {
 	if killers > 0 && victims > 0 {
 		switch {
 		case killers == 1 && victims == 1:
-			fmt.Printf("%s has killed %s! ", c.killers[0].Name, c.victims[0].Name)
+			fmt.Printf("%s HAS KILLED %s!", c.killers[0].Name, c.victims[0].Name)
 			if assistants > 0 {
-				fmt.Printf("Assisted by ")
+				fmt.Printf(" ASSISTED BY")
 				for i := range c.assistants {
-					fmt.Printf("%s ", c.assistants[i].Name)
+					fmt.Printf(" %s", c.assistants[i].Name)
 				}
 			}
 			fmt.Printf("\n")
 		case killers == 1 && victims > 1:
-			fmt.Printf("%s scored %d kills: ", c.killers[0].Name, victims)
+			fmt.Printf("%s SCORED %d KILLS: ", c.killers[0].Name, victims)
 			for i := range c.victims {
 				fmt.Printf("%s ", c.victims[i].Name)
 			}
 			fmt.Printf("\n")
 		case c.killers[0].Name == c.victims[0].Name && c.killers[1].Name == c.victims[1].Name:
-			fmt.Printf("%s and %s killed each other.\n", c.killers[0].Name, c.killers[1].Name)
+			fmt.Printf("%s and %s KILLED EACH OTHER.\n", c.killers[0].Name, c.killers[1].Name)
 		case killers > 1 && victims > 1:
-			fmt.Printf("%d killers with %d victims!\n", killers, victims)
-			fmt.Printf("killers")
+			fmt.Printf("%d KILLERS %d VICTIMS!\n", killers, victims)
+			fmt.Printf("KILLERS")
 			for i := range c.killers {
 				fmt.Printf(" %s", c.killers[i].Name)
 			}
-			fmt.Printf(" killed")
+			fmt.Printf(" VICTIMS")
 			for i := range c.victims {
 				fmt.Printf(" %s", c.victims[i].Name)
 			}
 			fmt.Printf(".")
 			if assistants > 0 {
-				fmt.Printf("Assisted by ")
+				fmt.Printf("ASSISTED BY ")
 				for i := range c.assistants {
 					fmt.Printf("%s ", c.assistants[i].Name)
 				}
 			}
 			fmt.Printf("\n")
 		case suicides == 1:
-			fmt.Printf("%s killed himself", c.suicides[0])
+			fmt.Printf("%s KILLED HIMSELF", c.suicides[0])
 		case suicides > 1:
-			fmt.Printf("%d fools killed themselves: ", suicides)
+			fmt.Printf("%d FOOLS KILLED THEMSELVES: ", suicides)
 			for i := range c.suicides {
 				fmt.Printf("%s", c.suicides[i].Name)
 			}
