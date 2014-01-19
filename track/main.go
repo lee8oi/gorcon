@@ -141,11 +141,11 @@ func (t *Tracker) monitor(mon chan *player) {
 			case "demoted":
 				fmt.Printf("%s has been demoted from vip.", i.Name)
 			case "captured":
-				fmt.Printf("%s has captured a control point!\n", i.Name)
+				//fmt.Printf("%s has captured a control point!\n", i.Name)
 			case "defended":
-				fmt.Printf("%s has defended a control point!\n", i.Name)
+				//fmt.Printf("%s has defended a control point!\n", i.Name)
 			case "neutralized":
-				fmt.Printf("%s has neutralized a control point!\n", i.Name)
+				//fmt.Printf("%s has neutralized a control point!\n", i.Name)
 			}
 		}
 	}
