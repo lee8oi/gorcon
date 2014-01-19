@@ -152,7 +152,7 @@ func (t *Tracker) monitor(mon chan *player) {
 	if err := writeJSON("players.json", t.players); err != nil {
 		fmt.Println(err)
 	}
-	t.players.analyze()
+	t.players.investigate()
 }
 
 //command monitors com channel for messages sent from chat.parse(). Used to handle

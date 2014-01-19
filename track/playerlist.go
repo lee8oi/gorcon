@@ -65,43 +65,31 @@ func (pl *playerList) new(data string) (plist playerList) {
 			}
 			id, _ := strconv.Atoi(splitLine[0])
 			idle, _ := strconv.Atoi(splitLine[41])
-			/*
-				19  	damage assists
-				20  	passenger assists
-				21  	target assists
-				27  	cp_assists
-				28  	neutralizes
-				29  	neutralizes assists
-				25  	cp_captures
-				26  	cp_defends
-				27  	cp_assists
-				CpCaptures, CpDefends,
-			*/
 			p = player{
-				Pid:       id,
-				Name:      splitLine[1],
-				Profileid: splitLine[10],
-				Team:      splitLine[2],
-				Level:     splitLine[39],
-				Kit:       kit,
-				Score:     splitLine[37],
-				Kills:     splitLine[31],
-				Deaths:    splitLine[36],
-				Alive:     splitLine[8],
-				Connected: splitLine[4],
-				Vip:       splitLine[46],
-				Nucleus:   splitLine[47],
-				Ping:      splitLine[3],
-				Idle:      idle,
-				Suicides:  strings.TrimSpace(splitLine[30]),
+				Pid:           id,
+				Name:          splitLine[1],
+				Profileid:     splitLine[10],
+				Team:          splitLine[2],
+				Level:         splitLine[39],
+				Kit:           kit,
+				Score:         splitLine[37],
+				Kills:         splitLine[31],
+				Deaths:        splitLine[36],
+				Alive:         splitLine[8],
+				Connected:     splitLine[4],
+				Vip:           splitLine[46],
+				Nucleus:       splitLine[47],
+				Ping:          splitLine[3],
+				Idle:          idle,
+				Suicides:      strings.TrimSpace(splitLine[30]),
+				CpCaptures:    splitLine[25],
+				CpDefends:     splitLine[26],
+				DamageAssists: splitLine[19],
+				Neutralizes:   splitLine[28],
 
 				//temporary variables
-				DamageAssists:      splitLine[19],
 				PassAssists:        splitLine[20],
-				CpCaptures:         splitLine[25],
-				CpDefends:          splitLine[26],
 				CpAssists:          splitLine[27],
-				Neutralizes:        splitLine[28],
 				NeutralizesAssists: splitLine[29],
 			}
 			plist[id] = p
@@ -151,12 +139,15 @@ func (pl *playerList) state(key int, p *player) {
 	case pl[key].Connected == "1" && p.Connected == "":
 		pl[key].Connection = "disconnected"
 	case pl[key].Connected == "0" && p.Connected == "1":
+		if pl[key].Joined == *new(time.Time) {
+			pl[key].Joined = time.Now()
+		}
 		pl[key].Connection = "connected"
 	case pl[key].Connected == "1" && p.Connected == "1":
+		if pl[key].Joined == *new(time.Time) {
+			pl[key].Joined = time.Now()
+		}
 		pl[key].Connection = "established"
-	}
-	if p.Connected == "1" || pl[key].Connected == "1" && pl[key].Joined == *new(time.Time) {
-		pl[key].Joined = time.Now()
 	}
 }
 
@@ -269,7 +260,7 @@ type crime struct {
 	killers, assistants, victims, suicides []*player
 }
 
-func (pl *playerList) analyze() {
+func (pl *playerList) investigate() {
 	var c crime
 	for key := range pl {
 		for _, value := range pl[key].Status {
