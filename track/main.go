@@ -106,6 +106,7 @@ func (t *Tracker) Start(wait string) {
 
 //monitor channel data from t.players.track(). Used to monitor player connection states.
 func (t *Tracker) monitor(mon chan *player) {
+	var base time.Time
 	for i := range mon {
 		switch i.Connection {
 		case "connected":
@@ -113,11 +114,14 @@ func (t *Tracker) monitor(mon chan *player) {
 		case "initial":
 			fmt.Printf("%s is connecting\n", i.Name)
 		case "disconnected":
-			if i.Joined == *new(time.Time) {
+			if i.Joined.Equal(base) {
 				fmt.Printf("%s has disconnected\n", i.Name)
 			} else {
 				fmt.Printf("%s has disconnected (%s)\n", i.Name, i.playtime())
 			}
+			t.players[i.Pid] = base
+		case "reconnecting":
+			fmt.Printf("%s is reconnecting\n", i.Name)
 		}
 
 		for _, value := range i.Status {

@@ -108,9 +108,13 @@ func (pl *playerList) parse(str string, mon chan *player) {
 	list := pl.new(str)
 	for i := 0; i < 16; i++ {
 		pl.status(i, &list[i])
-		pl.state(i, &list[i])
+		pl[i].Connection = pl.state(i, &list[i])
 		if pl[i].Connection == "disconnected" {
 			mon <- &pl[i]
+			continue
+		}
+		if pl[i].Connection == "initial" {
+			list[i].Connection = pl[i].Connection
 		}
 		pl.update(i, &list[i])
 		mon <- &pl[i]
@@ -124,33 +128,60 @@ Connection states are:
 	"initial" - Initial player connection.
 	"connecting" - Currently loading/connecting to game server.
 	"connected" - Player successfully connected to the game server.
+	"reconnecting" - Player was connected and is connecting again (map change?).
 	"interrupted" - Player connection was interrupted before completion.
 	"established" - Connection is connected & active.
 	"disconnected" - Player has disconnected from the game server.
 */
-func (pl *playerList) state(key int, p *player) {
+func (pl *playerList) state(key int, p *player) (s string) {
+	var base time.Time
 	switch {
 	case pl[key].Connected == "" && p.Connected == "0":
-		p.Connection = "initial"
+		s = "initial"
 	case pl[key].Connected == "0" && p.Connected == "0":
-		pl[key].Connection = "connecting"
+		s = "connecting"
 	case pl[key].Connected == "0" && p.Connected == "":
-		pl[key].Connection = "interrupted"
+		s = "interrupted"
 	case pl[key].Connected == "0" && p.Connected == "1":
-		if pl[key].Joined == *new(time.Time) {
-			pl[key].Joined = time.Now()
-		}
-		pl[key].Connection = "connected"
+		s = "connected"
 	case pl[key].Connected == "1" && p.Connected == "1":
-		if pl[key].Joined == *new(time.Time) {
-			pl[key].Joined = time.Now()
-		}
-		pl[key].Connection = "established"
-	case pl[key].Connected != "" && p.Connected != "1":
-		pl[key].Connection = "disconnected"
+		s = "established"
+	case pl[key].Connected == "1" && p.Connected == "":
+		s = "disconnected"
+	case pl[key].Connected == "1" && p.Connected == "0":
+		s = "reconnecting"
 	}
-
+	if p.Connected == "1" && pl[key].Joined.Equal(base) {
+		pl[key].Joined = time.Now()
+	}
+	return
 }
+
+//func (pl *playerList) state(key int, p *player) {
+//	var base time.Time
+//	switch {
+//	case pl[key].Connected == "" && p.Connected == "0":
+//		p.Connection = "initial"
+//	case pl[key].Connected == "0" && p.Connected == "0":
+//		pl[key].Connection = "connecting"
+//	case pl[key].Connected == "0" && p.Connected == "":
+//		pl[key].Connection = "interrupted"
+//	case pl[key].Connected == "0" && p.Connected == "1":
+//		if pl[key].Joined.Equal(base) {
+//			pl[key].Joined = time.Now()
+//		}
+//		pl[key].Connection = "connected"
+//	case pl[key].Connected == "1" && p.Connected == "1":
+//		if pl[key].Joined.Equal(base) {
+//			pl[key].Joined = time.Now()
+//		}
+//		pl[key].Connection = "established"
+//	case pl[key].Connected == "1" && p.Connected == "":
+//		pl[key].Connection = "disconnected"
+//	case pl[key].Connected == "1" && p.Connected == "0":
+//		pl[key].Connection = "reconnecting"
+//	}
+//}
 
 /*
 status sets the current player status(s) based on stat changes.
@@ -173,37 +204,45 @@ func (pl *playerList) status(key int, p *player) {
 	if len(p.Name) == 0 || len(pl[key].Name) == 0 {
 		return
 	}
-	switch {
-	case pl[key].Vip != p.Vip:
+	if pl[key].Vip != p.Vip {
 		if p.Vip == "1" {
 			p.Status = append(p.Status, "promoted")
 		} else {
 			p.Status = append(p.Status, "demoted")
 		}
-	case p.Level > pl[key].Level && pl[key].Level != "-1":
+	}
+	if p.Level > pl[key].Level && pl[key].Level != "-1" {
 		p.Status = append(p.Status, "leveled")
-	case pl[key].Idle == 0 && p.Idle > 0:
+	}
+	if pl[key].Idle == 0 && p.Idle > 0 {
 		p.Status = append(p.Status, "stopped")
-	case pl[key].Idle > 0 && p.Idle == 0:
+	}
+	if pl[key].Idle > 0 && p.Idle == 0 {
 		p.Status = append(p.Status, "resumed")
-	case p.Kills > pl[key].Kills:
+	}
+	if p.Kills > pl[key].Kills {
 		if p.DamageAssists > pl[key].DamageAssists {
 			p.Status = append(p.Status, "assisted")
 		} else {
 			p.Status = append(p.Status, "killed")
 		}
-	case p.Deaths > pl[key].Deaths:
-		p.Status = append(p.Status, "died")
-	case p.Suicides > pl[key].Suicides:
-		p.Status = append(p.Status, "suicided")
-	case pl[key].Neutralizes != p.Neutralizes:
-		p.Status = append(p.Status, "neutralized")
-	case p.CpCaptures > pl[key].CpCaptures:
-		p.Status = append(p.Status, "captured")
-	case p.CpDefends > pl[key].CpDefends:
-		p.Status = append(p.Status, "defended")
-
 	}
+	if p.Deaths > pl[key].Deaths {
+		p.Status = append(p.Status, "died")
+	}
+	if p.Suicides > pl[key].Suicides {
+		p.Status = append(p.Status, "suicided")
+	}
+	if pl[key].Neutralizes != p.Neutralizes {
+		p.Status = append(p.Status, "neutralized")
+	}
+	if p.CpCaptures > pl[key].CpCaptures {
+		p.Status = append(p.Status, "captured")
+	}
+	if p.CpDefends > pl[key].CpDefends {
+		p.Status = append(p.Status, "defended")
+	}
+
 	if pl[key].PassAssists != p.PassAssists {
 		fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
 	}
