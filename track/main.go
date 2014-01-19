@@ -96,67 +96,14 @@ func (t *Tracker) Start(wait string) {
 			fmt.Println(err)
 			break
 		}
-		mon := make(chan *player)
-		go t.players.parse(str, mon)
-		t.monitor(mon)
+		t.players.parse(str)
+		if err := writeJSON("players.json", t.players); err != nil {
+			fmt.Println(err)
+		}
+		t.players.investigate()
 
 		time.Sleep(dur)
 	}
-}
-
-//monitor channel data from t.players.track(). Used to monitor player connection states.
-func (t *Tracker) monitor(mon chan *player) {
-	var base time.Time
-	for i := range mon {
-		switch i.Connection {
-		case "connected":
-			fmt.Printf("%s has connected\n", i.Name)
-		case "initial":
-			fmt.Printf("%s is connecting\n", i.Name)
-		case "disconnected":
-			if i.Joined.Equal(base) {
-				fmt.Printf("%s has disconnected\n", i.Name)
-			} else {
-				fmt.Printf("%s has disconnected (%s)\n", i.Name, i.playtime())
-			}
-			t.players[i.Pid] = base
-		case "reconnecting":
-			fmt.Printf("%s is reconnecting\n", i.Name)
-		}
-
-		for _, value := range i.Status {
-			switch value {
-			case "assisted":
-				//fmt.Printf("%s has assisted a kill.\n", i.Name)
-			case "killed":
-				//fmt.Printf("%s has killed someone!\n", i.Name)
-			case "died":
-				//fmt.Printf("%s has died!\n", i.Name)
-			case "stopped":
-				//fmt.Printf("%s has stopped moving.\n", i.Name)
-			case "suicided":
-				//fmt.Printf("%s has commit suicide!\n", i.Name)
-			case "leveled":
-				fmt.Printf("%s has leveled up!\n", i.Name)
-			case "resumed":
-				//fmt.Printf("%s is moving again.\n", i.Name)
-			case "promoted":
-				fmt.Printf("%s has been promoted to vip.", i.Name)
-			case "demoted":
-				fmt.Printf("%s has been demoted from vip.", i.Name)
-			case "captured":
-				//fmt.Printf("%s has captured a control point!\n", i.Name)
-			case "defended":
-				//fmt.Printf("%s has defended a control point!\n", i.Name)
-			case "neutralized":
-				//fmt.Printf("%s has neutralized a control point!\n", i.Name)
-			}
-		}
-	}
-	if err := writeJSON("players.json", t.players); err != nil {
-		fmt.Println(err)
-	}
-	t.players.investigate()
 }
 
 //command monitors com channel for messages sent from chat.parse(). Used to handle
