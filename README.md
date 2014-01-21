@@ -21,7 +21,7 @@ Basic:
 			fmt.Println(err)
 			return
 		}
-		if err := r.Login(PASSWORD); err != nil {
+		if err := r.Login(ADMINNAME, PASSWORD); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -58,7 +58,7 @@ Command console including Reconnect & Config:
 			fmt.Println(err)
 			return
 		}
-		if err := r.Login(config.Pass); err != nil {
+		if err := r.Login(config.Admin, config.Pass); err != nil {
 			fmt.Println(err)
 			return
 		}

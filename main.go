@@ -25,11 +25,11 @@ type Config struct {
 }
 
 type Rcon struct {
-	pass, seed, service string
-	reconnect           bool
-	wait                time.Duration
-	sock                net.Conn
-	send                chan []byte
+	admin, pass, seed, service string
+	reconnect                  bool
+	wait                       time.Duration
+	sock                       net.Conn
+	send                       chan []byte
 }
 
 //AutoReconnect enables reconnection. Valid time units are "ns", "us" (or "µs"),
@@ -58,8 +58,9 @@ func (r *Rcon) Connect(address string) (err error) {
 }
 
 //Login encrypts seed & pass, performs authentication with Rcon server.
-func (r *Rcon) Login(pass string) (err error) {
+func (r *Rcon) Login(admin, pass string) (err error) {
 	r.pass = pass
+	r.admin = admin
 	hash := md5.New()
 	hash.Write([]byte(r.seed + pass))
 	_, err = r.sock.Write([]byte("login " + fmt.Sprintf("%x", hash.Sum(nil)) + "\n"))
@@ -67,6 +68,9 @@ func (r *Rcon) Login(pass string) (err error) {
 		return err
 	}
 	r.Scan("Authentication successful")
+	if len(r.admin) > 0 {
+		r.Send(fmt.Sprintf("bf2cc setadminname %s", r.admin))
+	}
 	return
 }
 
@@ -94,7 +98,7 @@ func (r *Rcon) Reconnect() error {
 			time.Sleep(r.wait)
 			continue
 		}
-		if err := r.Login(r.pass); err != nil {
+		if err := r.Login(r.admin, r.pass); err != nil {
 			return err
 		}
 		fmt.Println("Reconnection successful.")
