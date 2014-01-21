@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"github.com/lee8oi/gorcon"
 	"io/ioutil"
-	"strconv"
-	"strings"
+	//"strconv"
+	//"strings"
 	"time"
 )
 
@@ -30,6 +30,7 @@ type Tracker struct {
 	players playerList
 	aliases map[string]alias
 	admins  map[string]admin
+	proc    chan process
 	game    game
 	Rcon    gorcon.Rcon
 }
@@ -55,6 +56,8 @@ func (t *Tracker) Start(wait string) {
 		fmt.Println(err)
 		return
 	}
+	t.proc = make(chan process)
+	go t.processor()
 	loadJSON("players.json", &t.players)
 	loadJSON("game.json", &t.game)
 	if err := loadJSON("admins.json", &t.admins); err != nil {
@@ -70,32 +73,22 @@ func (t *Tracker) Start(wait string) {
 		t.aliases["test"] = alias{Power: 100, Command: "bf2cc sendserverchat testing successful"}
 		t.aliases["fart"] = alias{Power: 0, Command: "bf2cc sendserverchat Someone lets a smelly one go."}
 		t.aliases["request"] = alias{Power: 0, Command: "bf2cc sendserverchat Nobody can hear you scream here."}
+		t.aliases["testkick"] = alias{Power: 100, Command: "kick"}
+		t.aliases["testban"] = alias{Power: 100, Command: "kick"}
 		if err := writeJSON("aliases.json", &t.aliases); err != nil {
 			fmt.Println(err)
 		}
 	}
 	for {
-		str, err := t.Rcon.Send("bf2cc si")
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
+		str := t.process("reply", "bf2cc si")
 		t.game.update(str)
 
-		str, err = t.Rcon.Send("bf2cc clientchatbuffer")
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
+		str = t.process("reply", "bf2cc clientchatbuffer")
 		com := make(chan *message)
 		go parseChat(str, com)
-		t.command(com)
+		t.interpret(com)
 
-		str, err = t.Rcon.Send("bf2cc pl")
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
+		str = t.process("reply", "bf2cc pl")
 		t.players.parse(str)
 		if err := writeJSON("players.json", t.players); err != nil {
 			fmt.Println(err)
@@ -103,27 +96,6 @@ func (t *Tracker) Start(wait string) {
 		t.players.investigate()
 
 		time.Sleep(dur)
-	}
-}
-
-//command monitors com channel for messages sent from chat.parse(). Used to handle
-//in-game commands typed by players.
-func (t *Tracker) command(com chan *message) {
-	for m := range com {
-		id, _ := strconv.Atoi(m.Pid)
-		split := strings.Split(m.Text[1:], " ")
-		if len(t.aliases[split[0]].Command) > 0 { //existing alias
-			full := t.aliases[split[0]].Command + " " + strings.Join(split[1:], " ") + "\n"
-			if t.aliases[split[0]].Power == 0 { //public alias
-				fmt.Printf("Public alias: %s", full)
-			} else { //admin alias
-				if t.admins[t.players[id].Nucleus].Power >= t.aliases[split[0]].Power { //enough power
-					fmt.Printf("As Admin: %s", full)
-				} else { //not enough power
-					fmt.Printf("%s - not enough power\n", t.players[id].Name)
-				}
-			}
-		}
 	}
 }
 

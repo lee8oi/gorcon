@@ -137,6 +137,7 @@ func (pl *playerList) state(key int, p *player) {
 		s = "connecting"
 	case pl[key].Connected == "0" && p.Connected == "":
 		s = "interrupted"
+		fmt.Printf("INTERRUPTED: %s\n", pl[key].Name)
 	case pl[key].Connected == "0" && p.Connected == "1":
 		s = "connected"
 		fmt.Printf("CONNECTED: %s\n", p.Name)
@@ -346,14 +347,14 @@ func (pl *playerList) update(key int, p *player) {
 	pl[key] = *p
 }
 
-func (pl *playerList) search(terms string) (p *player) {
-	for key, value := range pl {
-		if strings.Contains(value.Name, terms) {
-			p = &pl[key]
-			break
+func (pl *playerList) find(term string) []int {
+	var results []int
+	for key := range pl {
+		if strings.Contains(strings.ToLower(pl[key].Name), term) {
+			results = append(results, key)
 		}
 	}
-	return
+	return results
 }
 
 type crime struct {

@@ -12,12 +12,13 @@ chat and its methods are used to track current server chat messages.
 package track
 
 import (
-	"fmt"
+	//"fmt"
 	"strings"
 )
 
 type message struct {
 	Pid, Origin, Team, Type, Time, Text string
+	IsCommand                           bool
 }
 
 func parseChat(data string, com chan *message) {
@@ -40,10 +41,12 @@ func parseChat(data string, com chan *message) {
 				Time:   elem[4],
 				Text:   elem[5],
 			}
-			if len(m.Text) > 0 && strings.IndexAny(m.Text, "!/|") == 0 {
+			if len(m.Text) > 0 {
+				if strings.IndexAny(m.Text, "!/|") == 0 {
+					m.IsCommand = true
+				}
 				com <- &m
 			}
-			fmt.Println(m)
 		}
 	}
 	close(com)
