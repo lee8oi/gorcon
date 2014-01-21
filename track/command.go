@@ -17,6 +17,17 @@ import (
 	"strings"
 )
 
+type process struct {
+	instruct, line string
+	reply          chan string
+}
+
+func (t *Tracker) process(instruct, line string) string {
+	reply := make(chan string)
+	t.proc <- process{instruct, line, reply}
+	return <-reply
+}
+
 //interpret monitors com channel for messages sent from parseChat(). Used to interpret
 //command lines in messages and create processes to handle them.
 func (t *Tracker) interpret(com chan *message) {
@@ -24,7 +35,7 @@ func (t *Tracker) interpret(com chan *message) {
 		id, _ := strconv.Atoi(m.Pid)
 		split := strings.Split(m.Text[1:], " ")
 		fmt.Printf("%s[%s]: %s\n", m.Origin, m.Time, m.Text)
-		if m.IsCommand && len(t.aliases[split[0]].Command) > 0 {
+		if m.IsCommand {
 			line := ""
 			permitted := false
 			public := false
@@ -57,24 +68,25 @@ func (t *Tracker) interpret(com chan *message) {
 					}
 				}
 			default:
+				var cmd string
 				if len(split) > 1 {
-					line = t.parseTags(id, strings.Join(split[1:], " "))
-					t.process("send", t.aliases[split[0]].Command+" "+line)
+					line = strings.Join(split[1:], " ")
 				}
+				switch t.aliases[split[0]].Visibility {
+				case "public":
+					cmd = fmt.Sprintf(`bf2cc sendserverchat %s`, t.aliases[split[0]].Message+" "+line)
+				case "private":
+					cmd = fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, t.aliases[split[0]].Message+" "+line)
+				case "server":
+					cmd = t.aliases[split[0]].Message + " " + line
+				default:
+					continue
+				}
+				full := t.parseTags(id, cmd)
+				t.process("send", full)
 			}
 		}
 	}
-}
-
-type process struct {
-	instruct, line string
-	reply          chan string
-}
-
-func (t *Tracker) process(instruct, line string) string {
-	reply := make(chan string)
-	t.proc <- process{instruct, line, reply}
-	return <-reply
 }
 
 func (t *Tracker) processor() {
@@ -120,15 +132,28 @@ func (t *Tracker) parseTags(pid int, m string) string {
 	}
 	if strings.Contains(m, "$PT$") {
 		//replace with player team
-		var team string
-		if t.players[pid].Team == "1" {
-			team = "National"
-		} else if t.players[pid].Team == "2" {
-			team = "Royal"
+		m = strings.Replace(m, "$PT$", t.players[pid].team(), -1)
+	}
+	if strings.Contains(m, "$PC$") {
+		m = strings.Replace(m, "$PC", t.players[pid].Kit, -1)
+	}
+	if strings.Contains(m, "$ET$") {
+		var enemy string
+		if t.players[pid].Team == "2" {
+			enemy = "National"
 		} else {
-			team = t.players[pid].Team
+			enemy = "Royal"
 		}
-		m = strings.Replace(m, "$PT$", team, -1)
+		m = strings.Replace(m, "$ET$", enemy, -1)
+	}
+	if strings.Contains(m, "$PTN$") {
+		var size string
+		if t.players[pid].Team == "1" {
+			size = t.game.Nsize
+		} else {
+			size = t.game.Rsize
+		}
+		m = strings.Replace(m, "$PTN$", size, -1)
 	}
 	return m
 }

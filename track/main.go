@@ -41,8 +41,9 @@ type admin struct {
 }
 
 type alias struct {
-	Power   int
-	Command string
+	Power      int
+	Visibility string
+	Message    string
 }
 
 /*
@@ -58,6 +59,7 @@ func (t *Tracker) Start(wait string) {
 	}
 	t.proc = make(chan process)
 	go t.processor()
+	t.process("send", "bf2cc setadminname Gorcon")
 	loadJSON("players.json", &t.players)
 	loadJSON("game.json", &t.game)
 	if err := loadJSON("admins.json", &t.admins); err != nil {
@@ -69,12 +71,11 @@ func (t *Tracker) Start(wait string) {
 	}
 	if err := loadJSON("aliases.json", &t.aliases); err != nil {
 		t.aliases = make(map[string]alias)
-		t.aliases["say"] = alias{Power: 100, Command: "bf2cc sendserverchat"}
-		t.aliases["test"] = alias{Power: 100, Command: "bf2cc sendserverchat testing successful"}
-		t.aliases["fart"] = alias{Power: 0, Command: "bf2cc sendserverchat Someone lets a smelly one go."}
-		t.aliases["request"] = alias{Power: 0, Command: "bf2cc sendserverchat Nobody can hear you scream here."}
-		t.aliases["testkick"] = alias{Power: 100, Command: "kick"}
-		t.aliases["testban"] = alias{Power: 100, Command: "kick"}
+		t.aliases["say"] = alias{Power: 100, Visibility: "public", Message: ""}
+		t.aliases["test"] = alias{Power: 100, Visibility: "private", Message: "testing successful"}
+		t.aliases["toot"] = alias{Power: 0, Visibility: "public", Message: "$PN bites is lip and farts out the word '$PT'"}
+		t.aliases["testkick"] = alias{Power: 100, Visibility: "server", Message: "kick"}
+		t.aliases["testban"] = alias{Power: 100, Visibility: "server", Message: "ban"}
 		if err := writeJSON("aliases.json", &t.aliases); err != nil {
 			fmt.Println(err)
 		}

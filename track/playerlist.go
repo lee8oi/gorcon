@@ -36,6 +36,17 @@ func (p *player) playtime() string {
 	return strings.Split(time.Since(p.Joined).String(), ".")[0] + "s"
 }
 
+func (p *player) team() (team string) {
+	if p.Team == "2" {
+		team = "Royal"
+	} else if p.Team == "1" {
+		team = "National"
+	} else {
+		team = p.Team
+	}
+	return
+}
+
 //playerList contains a maximum of 16 player 'slots' as per game server limits.
 type playerList [16]player
 
@@ -100,8 +111,8 @@ func (pl *playerList) new(data string) (plist playerList) {
 }
 
 /*
-parse parses 'bf2cc pl' data string and uses it to track connection states and status's for each
-player. Player data is updated and a player pointer is sent to the monitor channel for handling.
+parse parses 'bf2cc pl' data string and uses it to update player data and track
+connection states & status's
 */
 func (pl *playerList) parse(str string) {
 	list := pl.new(str)
@@ -158,32 +169,6 @@ func (pl *playerList) state(key int, p *player) {
 	}
 	pl[key].Connection = s
 }
-
-//func (pl *playerList) state(key int, p *player) {
-//	var base time.Time
-//	switch {
-//	case pl[key].Connected == "" && p.Connected == "0":
-//		p.Connection = "initial"
-//	case pl[key].Connected == "0" && p.Connected == "0":
-//		pl[key].Connection = "connecting"
-//	case pl[key].Connected == "0" && p.Connected == "":
-//		pl[key].Connection = "interrupted"
-//	case pl[key].Connected == "0" && p.Connected == "1":
-//		if pl[key].Joined.Equal(base) {
-//			pl[key].Joined = time.Now()
-//		}
-//		pl[key].Connection = "connected"
-//	case pl[key].Connected == "1" && p.Connected == "1":
-//		if pl[key].Joined.Equal(base) {
-//			pl[key].Joined = time.Now()
-//		}
-//		pl[key].Connection = "established"
-//	case pl[key].Connected == "1" && p.Connected == "":
-//		pl[key].Connection = "disconnected"
-//	case pl[key].Connected == "1" && p.Connected == "0":
-//		pl[key].Connection = "reconnecting"
-//	}
-//}
 
 /*
 status sets the current player status(s) based on stat changes.
@@ -268,52 +253,6 @@ func (pl *playerList) status(key int, p *player) {
 		fmt.Printf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists)
 	}
 }
-
-//func (pl *playerList) status2(key int, p *player) {
-//	if len(p.Name) == 0 || len(pl[key].Name) == 0 {
-//		return
-//	}
-//	switch {
-//	case pl[key].Vip != p.Vip:
-//		if p.Vip == "1" {
-//			p.Status = append(p.Status, "promoted")
-//		} else {
-//			p.Status = append(p.Status, "demoted")
-//		}
-//	case p.Level > pl[key].Level && pl[key].Level != "-1":
-//		p.Status = append(p.Status, "leveled")
-//	case pl[key].Idle == 0 && p.Idle > 0:
-//		p.Status = append(p.Status, "stopped")
-//	case pl[key].Idle > 0 && p.Idle == 0:
-//		p.Status = append(p.Status, "resumed")
-//	case p.Kills > pl[key].Kills:
-//		if p.DamageAssists > pl[key].DamageAssists {
-//			p.Status = append(p.Status, "assisted")
-//		} else {
-//			p.Status = append(p.Status, "killed")
-//		}
-//	case p.Deaths > pl[key].Deaths:
-//		p.Status = append(p.Status, "died")
-//	case p.Suicides > pl[key].Suicides:
-//		p.Status = append(p.Status, "suicided")
-//	case pl[key].Neutralizes != p.Neutralizes:
-//		p.Status = append(p.Status, "neutralized")
-//	case p.CpCaptures > pl[key].CpCaptures:
-//		p.Status = append(p.Status, "captured")
-//	case p.CpDefends > pl[key].CpDefends:
-//		p.Status = append(p.Status, "defended")
-
-//	}
-//	if pl[key].PassAssists != p.PassAssists {
-//		fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
-//	}
-//	if pl[key].CpAssists != p.CpAssists {
-//		fmt.Printf("%s CpAssists change %s to %s\n", p.Name, pl[key].CpAssists, p.CpAssists)
-//	}
-//	if pl[key].NeutralizesAssists != p.NeutralizesAssists {
-//		fmt.Printf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists)
-//	}
-//}
 
 /*
 update the player slot at the index specifed by key.
