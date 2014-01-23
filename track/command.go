@@ -13,6 +13,7 @@ package track
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -103,13 +104,13 @@ func (t *Tracker) processor() {
 				fmt.Println(err)
 			}
 		case "send":
-			fmt.Printf("%s", d.line)
+			fmt.Printf("%s\n", d.line)
 			str, err := t.Rcon.Send(d.line)
 			if err != nil {
 				fmt.Println(err)
 			}
 			fmt.Println(str)
-			d.reply <- ""
+			//d.reply <- ""
 		case "reply":
 			str, err := t.Rcon.Send(d.line)
 			if err != nil {
@@ -122,38 +123,34 @@ func (t *Tracker) processor() {
 }
 
 func (t *Tracker) parseTags(pid int, m string) string {
-	if strings.Contains(m, "$PN$") {
-		//replace with player name.
-		m = strings.Replace(m, "$PN$", t.players[pid].Name, -1)
+	tags, err := regexp.Compile(`\$+[A-Z]+\$`)
+	if err != nil {
+		fmt.Println(err)
 	}
-	if strings.Contains(m, "$PL$") {
-		//replace with player level:
-		m = strings.Replace(m, "$PL$", t.players[pid].Level, -1)
-	}
-	if strings.Contains(m, "$PT$") {
-		//replace with player team
-		m = strings.Replace(m, "$PT$", t.players[pid].team(), -1)
-	}
-	if strings.Contains(m, "$PC$") {
-		m = strings.Replace(m, "$PC", t.players[pid].Kit, -1)
-	}
-	if strings.Contains(m, "$ET$") {
-		var enemy string
-		if t.players[pid].Team == "2" {
-			enemy = "National"
-		} else {
-			enemy = "Royal"
+	result := tags.ReplaceAllFunc([]byte(m), func(b []byte) (r []byte) {
+		fmt.Println(fmt.Sprintf("%s", b))
+		//return []byte("value")
+		switch fmt.Sprintf("%s", b) {
+		case "$PN$":
+			r = []byte(t.players[pid].Name)
+		case "$PL$":
+			r = []byte(t.players[pid].Level)
+		case "$PT$":
+			r = []byte(t.players[pid].Team)
+		case "$PC$":
+			r = []byte(t.players[pid].Kit)
+		case "$ET$":
+			if t.players[pid].Team == "2" {
+				r = []byte("National")
+			}
+			r = []byte("Royal")
+		case "$PTN$":
+			if t.players[pid].Team == "1" {
+				r = []byte(t.game.Nsize)
+			}
+			r = []byte(t.game.Rsize)
 		}
-		m = strings.Replace(m, "$ET$", enemy, -1)
-	}
-	if strings.Contains(m, "$PTN$") {
-		var size string
-		if t.players[pid].Team == "1" {
-			size = t.game.Nsize
-		} else {
-			size = t.game.Rsize
-		}
-		m = strings.Replace(m, "$PTN$", size, -1)
-	}
-	return m
+		return
+	})
+	return fmt.Sprintf("%s", result)
 }
