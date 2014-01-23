@@ -72,8 +72,9 @@ func (t *Tracker) Start(wait string) {
 	if err := loadJSON("aliases.json", &t.aliases); err != nil {
 		t.aliases = make(map[string]alias)
 		t.aliases["say"] = alias{Power: 100, Visibility: "public", Message: ""}
+		t.aliases["self"] = alias{Power: 0, Visibility: "private", Message: "$PN$ $PT$ $PL$ $PTN$ enemy: $ET$"}
 		t.aliases["test"] = alias{Power: 100, Visibility: "private", Message: "testing successful"}
-		t.aliases["toot"] = alias{Power: 0, Visibility: "public", Message: "$PN bites is lip and farts out the word '$PT'"}
+		t.aliases["toot"] = alias{Power: 0, Visibility: "public", Message: "$PN$ bites his lip and farts out the word *$PT$*"}
 		t.aliases["testkick"] = alias{Power: 100, Visibility: "server", Message: "kick"}
 		t.aliases["testban"] = alias{Power: 100, Visibility: "server", Message: "ban"}
 		if err := writeJSON("aliases.json", &t.aliases); err != nil {
