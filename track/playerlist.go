@@ -22,11 +22,11 @@ import (
 
 type player struct {
 	Name, Profileid, Team, Level, Kit, Score,
-	Kills, Deaths, Alive, Connected, Vip, Nucleus,
+	Kills, Deaths, Alive, Idle, Connected, Vip, Nucleus,
 	Ping, Suicides, Connection string
-	Status    []string
-	Pid, Idle int
-	Joined    time.Time
+	Status []string
+	Pid    int
+	Joined time.Time
 
 	//temporary values
 	DamageAssists, PassAssists, CpAssists, CpCaptures, CpDefends, Neutralizes, NeutralizesAssists string
@@ -60,8 +60,11 @@ func (pl *playerList) empty() bool {
 	return true
 }
 
-//new takes a 'bf2cc pl' result string and returns a new playerList.
-func (pl *playerList) new(data string) (plist playerList) {
+/*
+parse parses 'bf2cc pl' data string and uses it to update player data and track
+connection states & status's
+*/
+func (pl *playerList) parse(data string) (plist playerList) {
 	if len(data) > 1 {
 		split := strings.Split(data, "\r")
 		for _, value := range split {
@@ -75,7 +78,6 @@ func (pl *playerList) new(data string) (plist playerList) {
 				kit = strings.Split(splitLine[34], "_")[1]
 			}
 			id, _ := strconv.Atoi(splitLine[0])
-			idle, _ := strconv.Atoi(splitLine[41])
 			p = player{
 				Pid:           id,
 				Name:          splitLine[1],
@@ -91,7 +93,7 @@ func (pl *playerList) new(data string) (plist playerList) {
 				Vip:           splitLine[46],
 				Nucleus:       splitLine[47],
 				Ping:          splitLine[3],
-				Idle:          idle,
+				Idle:          splitLine[41],
 				Suicides:      strings.TrimSpace(splitLine[30]),
 				CpCaptures:    splitLine[25],
 				CpDefends:     splitLine[26],
@@ -103,24 +105,13 @@ func (pl *playerList) new(data string) (plist playerList) {
 				CpAssists:          splitLine[27],
 				NeutralizesAssists: splitLine[29],
 			}
-			plist[id] = p
+			pl.status(id, &p)
+			pl.state(id, &p)
+			pl.update(id, &p)
 		}
 		return
 	}
 	return
-}
-
-/*
-parse parses 'bf2cc pl' data string and uses it to update player data and track
-connection states & status's
-*/
-func (pl *playerList) parse(str string) {
-	list := pl.new(str)
-	for i := 0; i < 16; i++ {
-		pl.status(i, &list[i])
-		pl.state(i, &list[i])
-		pl.update(i, &list[i])
-	}
 }
 
 /*
@@ -204,11 +195,12 @@ func (pl *playerList) status(key int, p *player) {
 		p.Status = append(p.Status, "leveled")
 		fmt.Printf("%s has leveled up!\n", p.Name)
 	}
-	if pl[key].Idle == 0 && p.Idle > 0 {
+	idle, _ := strconv.Atoi(pl[key].Idle)
+	if idle == 0 && idle > 0 {
 		p.Status = append(p.Status, "stopped")
 		//fmt.Printf("%s is idle!\n", p.Name)
 	}
-	if pl[key].Idle > 0 && p.Idle == 0 {
+	if idle > 0 && idle == 0 {
 		p.Status = append(p.Status, "resumed")
 		//fmt.Printf("%s is no longer idle.\n", p.Name)
 	}
@@ -241,7 +233,6 @@ func (pl *playerList) status(key int, p *player) {
 		p.Status = append(p.Status, "defended")
 		fmt.Printf("%s defended a control point!\n", p.Name)
 	}
-
 	//temporary/testing
 	if pl[key].PassAssists != p.PassAssists {
 		fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
@@ -337,8 +328,8 @@ func (pl *playerList) investigate() {
 				fmt.Printf(" %s", c.victims[i].Name)
 			}
 			fmt.Printf("\n")
-		case c.killers[0].Name == c.victims[0].Name && c.killers[1].Name == c.victims[1].Name:
-			fmt.Printf("- %s and %s - KILLED EACH OTHER.\n", c.killers[0].Name, c.killers[1].Name)
+		//case c.killers[0].Name == c.victims[0].Name && c.killers[1].Name == c.victims[1].Name:
+		//	fmt.Printf("- %s and %s - KILLED EACH OTHER.\n", c.killers[0].Name, c.killers[1].Name)
 		case killers > 1 && victims > 1:
 			fmt.Printf("- %d KILLERS %d VICTIMS!\n", killers, victims)
 			fmt.Printf("KILLERS")
