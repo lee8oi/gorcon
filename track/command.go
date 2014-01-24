@@ -44,7 +44,7 @@ func (t *Tracker) interpret(com chan *message) {
 				permitted = true
 			}
 			if t.aliases[split[0]].Power == 0 {
-				//public alias (no power check)
+				//public alias
 				public = true
 			}
 			if !public && !permitted {
@@ -110,7 +110,6 @@ func (t *Tracker) processor() {
 				fmt.Println(err)
 			}
 			fmt.Println(str)
-			//d.reply <- ""
 		case "reply":
 			str, err := t.Rcon.Send(d.line)
 			if err != nil {
@@ -128,27 +127,47 @@ func (t *Tracker) parseTags(pid int, m string) string {
 		fmt.Println(err)
 	}
 	result := tags.ReplaceAllFunc([]byte(m), func(b []byte) (r []byte) {
-		fmt.Println(fmt.Sprintf("%s", b))
-		//return []byte("value")
 		switch fmt.Sprintf("%s", b) {
-		case "$PN$":
+		case "$PN$": //Player Name
 			r = []byte(t.players[pid].Name)
 		case "$PL$":
 			r = []byte(t.players[pid].Level)
-		case "$PT$":
-			r = []byte(t.players[pid].Team)
-		case "$PC$":
+		case "$PC$": //Player Class
 			r = []byte(t.players[pid].Kit)
+		case "$PS$": //Player Score
+			r = []byte(t.players[pid].Score)
+		case "$PD$": //Player Deaths
+			r = []byte(t.players[pid].Deaths)
+		case "$PDS$": //Player Death - Suicides
+			r = []byte(t.players[pid].Suicides)
+		case "$PP$": //Player Ping
+			r = []byte(t.players[pid].Ping)
+		case "$PI$": //Player Idle
+			r = []byte(t.players[pid].Idle)
+		case "$PT$": //Player Team
+			fmt.Println(t.players[pid].Team)
+			if t.players[pid].Team == "1" {
+				r = []byte("National")
+			} else {
+				r = []byte("Royal")
+			}
 		case "$ET$":
 			if t.players[pid].Team == "2" {
 				r = []byte("National")
 			}
 			r = []byte("Royal")
-		case "$PTN$":
+		case "$PTN$": //Player Team Number (of players)
 			if t.players[pid].Team == "1" {
 				r = []byte(t.game.Nsize)
+			} else {
+				r = []byte(t.game.Rsize)
 			}
-			r = []byte(t.game.Rsize)
+		case "$ETN$": //Enemy Team Number (of players)
+			if t.players[pid].Team == "2" {
+				r = []byte(t.game.Nsize)
+			} else {
+				r = []byte(t.game.Rsize)
+			}
 		}
 		return
 	})
