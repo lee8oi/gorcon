@@ -63,8 +63,8 @@ Command console including Reconnect & Config:
 			return
 		}
 		r.AutoReconnect("30s") //see time.ParseDuration for valid time units
-		go r.Writer()
-		go r.Reader()
+		go r.Init()
+		go r.Handler(handle)
 		for {
 			in := bufio.NewReader(os.Stdin)
 			line, err := in.ReadString('\n')
@@ -73,7 +73,10 @@ Command console including Reconnect & Config:
 				return
 			}
 			if len(line) > 1 {
-				r.Write(line)
+				r.Enqueue(line)
 			}
 		}
+	}
+	func handle(s string) {
+		fmt.Println(s)
 	}
