@@ -31,6 +31,7 @@ type Rcon struct {
 	sock                               net.Conn
 	send                               chan []byte
 	queue                              chan string
+	receive                            chan string
 }
 
 //AutoReconnect enables reconnection. Valid time units are "ns", "us" (or "µs"),
@@ -155,7 +156,8 @@ func (r *Rcon) Reader() {
 		}
 		result = strings.TrimSpace(strings.Trim(result, "\u0004"))
 		if len(result) > 0 {
-			fmt.Println(result)
+			//fmt.Println(result)
+			r.receive <- result
 		}
 	}
 }
@@ -185,10 +187,11 @@ func (r *Rcon) Write(message string) {
 	r.send <- []byte(strings.TrimSpace(message))
 }
 
-//Init initializes Reader & Writer routines and starts the Queue for handling
-//outgoing commands.
+//Init initializes Reader & Writer routines. Also initializes necessary channels
+//and starts the Queue for handling outgoing commands with Enqueue().
 func (r *Rcon) Init() {
 	r.queue = make(chan string)
+	r.receive = make(chan string)
 	go r.Reader()
 	go r.Writer()
 	r.Queue()
@@ -204,7 +207,15 @@ func (r *Rcon) Enqueue(line string) {
 
 //Queue sequentially handles outgoing commands being sent to the Rcon connection.
 func (r *Rcon) Queue() {
-	for d := range r.queue {
-		r.Write(d)
+	for s := range r.queue {
+		r.Write(s)
+	}
+}
+
+//Handler listens on the receive channel for data from the Reader. Runs the given
+//function on the resulting string data.
+func (r *Rcon) Handler(f func(string)) {
+	for s := range r.receive {
+		f(s)
 	}
 }
