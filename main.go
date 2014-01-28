@@ -30,6 +30,7 @@ type Rcon struct {
 	wait                               time.Duration
 	sock                               net.Conn
 	send                               chan []byte
+	proc                               chan string
 }
 
 //AutoReconnect enables reconnection. Valid time units are "ns", "us" (or "µs"),
@@ -181,4 +182,24 @@ func (r *Rcon) Write(message string) {
 		time.Sleep(1 * time.Second)
 	}
 	r.send <- []byte(strings.TrimSpace(message))
+}
+
+func (r *Rcon) Init() {
+	r.proc = make(chan string)
+	go r.Reader()
+	go r.Writer()
+	r.Queue()
+}
+
+func (r *Rcon) Enqueue(line string) {
+	for r.proc == nil { //wait to queue if channel is not available
+		time.Sleep(1 * time.Second)
+	}
+	r.proc <- line
+}
+
+func (r *Rcon) Queue() {
+	for d := range r.proc {
+		r.Write(d)
+	}
 }
