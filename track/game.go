@@ -5,7 +5,6 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 gorcon/track (lee8oi)
 
-server is a simple type for storing cu
 */
 
 //
