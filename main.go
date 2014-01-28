@@ -30,7 +30,7 @@ type Rcon struct {
 	wait                               time.Duration
 	sock                               net.Conn
 	send                               chan []byte
-	proc                               chan string
+	queue                              chan string
 }
 
 //AutoReconnect enables reconnection. Valid time units are "ns", "us" (or "µs"),
@@ -188,7 +188,7 @@ func (r *Rcon) Write(message string) {
 //Init initializes Reader & Writer routines and starts the Queue for handling
 //outgoing commands.
 func (r *Rcon) Init() {
-	r.proc = make(chan string)
+	r.queue = make(chan string)
 	go r.Reader()
 	go r.Writer()
 	r.Queue()
@@ -196,15 +196,15 @@ func (r *Rcon) Init() {
 
 //Enqueue adds a command line to the Queue to be written to the Rcon connection via Writer.
 func (r *Rcon) Enqueue(line string) {
-	for r.proc == nil { //wait to queue if channel is not available
+	for r.queue == nil { //wait to queue if channel is not available
 		time.Sleep(1 * time.Second)
 	}
-	r.proc <- line
+	r.queue <- line
 }
 
 //Queue sequentially handles outgoing commands being sent to the Rcon connection.
 func (r *Rcon) Queue() {
-	for d := range r.proc {
+	for d := range r.queue {
 		r.Write(d)
 	}
 }
