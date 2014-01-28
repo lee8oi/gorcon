@@ -77,24 +77,6 @@ func (r *Rcon) Login(admin, pass string) (err error) {
 	return
 }
 
-//Reader reads all incoming socket data, handling reconnection if enabled.
-func (r *Rcon) Reader() {
-	for {
-		result, err := bufio.NewReader(r.sock).ReadString('\u0004')
-		if err != nil {
-			fmt.Println(err)
-			r.status = "error"
-			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
-				r.Reconnect()
-			}
-		}
-		result = strings.TrimSpace(strings.Trim(result, "\u0004"))
-		if len(result) > 0 {
-			fmt.Println(result)
-		}
-	}
-}
-
 //Reconnect attempts to re-establish Rcon connection. Waiting duration & trying
 //again on failure.
 func (r *Rcon) Reconnect() error {
@@ -130,8 +112,9 @@ func (r *Rcon) Scan(str string) (s string) {
 	return
 }
 
-//Send is a single-use style function for writing a command to the socket and
-//returning the resulting data as a string. Includes reconnection.
+//Send is a single-use style function, independant of the Reader & Writer, used
+//to write a command to the socket and returning the resulting data as a string.
+//Includes reconnection.
 func (r *Rcon) Send(command string) (string, error) {
 	line := "\u0002" + command + "\n"
 	_, err := r.sock.Write([]byte(line))
@@ -159,8 +142,26 @@ func (r *Rcon) Send(command string) (string, error) {
 	return strings.TrimSpace(strings.Trim(result, "\u0004")), nil
 }
 
-//Writer handles writing send channel data to the socket. Handles reconnection if
-//enabled.
+//Reader reads all incoming socket data, handling reconnection if enabled.
+func (r *Rcon) Reader() {
+	for {
+		result, err := bufio.NewReader(r.sock).ReadString('\u0004')
+		if err != nil {
+			fmt.Println(err)
+			r.status = "error"
+			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
+				r.Reconnect()
+			}
+		}
+		result = strings.TrimSpace(strings.Trim(result, "\u0004"))
+		if len(result) > 0 {
+			fmt.Println(result)
+		}
+	}
+}
+
+//Writer handles writing send channel data to the socket. Waits if connection is
+//not authenticated yet.
 func (r *Rcon) Writer() {
 	r.send = make(chan []byte)
 	for message := range r.send {
@@ -184,6 +185,8 @@ func (r *Rcon) Write(message string) {
 	r.send <- []byte(strings.TrimSpace(message))
 }
 
+//Init initializes Reader & Writer routines and starts the Queue for handling
+//outgoing commands.
 func (r *Rcon) Init() {
 	r.proc = make(chan string)
 	go r.Reader()
@@ -191,6 +194,7 @@ func (r *Rcon) Init() {
 	r.Queue()
 }
 
+//Enqueue adds a command line to the Queue to be written to the Rcon connection via Writer.
 func (r *Rcon) Enqueue(line string) {
 	for r.proc == nil { //wait to queue if channel is not available
 		time.Sleep(1 * time.Second)
@@ -198,6 +202,7 @@ func (r *Rcon) Enqueue(line string) {
 	r.proc <- line
 }
 
+//Queue sequentially handles outgoing commands being sent to the Rcon connection.
 func (r *Rcon) Queue() {
 	for d := range r.proc {
 		r.Write(d)
