@@ -25,11 +25,11 @@ type Config struct {
 }
 
 type Rcon struct {
-	admin, pass, seed, service string
-	reconnect                  bool
-	wait                       time.Duration
-	sock                       net.Conn
-	send                       chan []byte
+	admin, pass, seed, status, service string
+	reconnect                          bool
+	wait                               time.Duration
+	sock                               net.Conn
+	send                               chan []byte
 }
 
 //AutoReconnect enables reconnection. Valid time units are "ns", "us" (or "µs"),
@@ -52,6 +52,7 @@ func (r *Rcon) Connect(address string) (err error) {
 	if err != nil {
 		return err
 	}
+	r.status = "connected"
 	str := r.Scan("### Digest seed:")
 	r.seed = strings.TrimSpace(strings.Split(str, ":")[1])
 	return
@@ -71,6 +72,7 @@ func (r *Rcon) Login(admin, pass string) (err error) {
 	if len(r.admin) > 0 {
 		r.Send(fmt.Sprintf("bf2cc setadminname %s", r.admin))
 	}
+	r.status = "authenticated"
 	return
 }
 
@@ -80,11 +82,15 @@ func (r *Rcon) Reader() {
 		result, err := bufio.NewReader(r.sock).ReadString('\u0004')
 		if err != nil {
 			fmt.Println(err)
+			r.status = "error"
 			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
 				r.Reconnect()
 			}
 		}
-		fmt.Println(strings.TrimSpace(strings.Trim(result, "\u0004")))
+		result = strings.TrimSpace(strings.Trim(result, "\u0004"))
+		if len(result) > 0 {
+			fmt.Println(result)
+		}
 	}
 }
 
@@ -92,6 +98,7 @@ func (r *Rcon) Reader() {
 //again on failure.
 func (r *Rcon) Reconnect() error {
 	for {
+		r.status = "reconnecting"
 		fmt.Println("Attempting reconnection.")
 		if err := r.Connect(r.service); err != nil {
 			fmt.Println("Reconnection attempt failed. Waiting.")
@@ -154,20 +161,24 @@ func (r *Rcon) Send(command string) (string, error) {
 //Writer handles writing send channel data to the socket. Handles reconnection if
 //enabled.
 func (r *Rcon) Writer() {
-	r.send = make(chan []byte, 256)
+	r.send = make(chan []byte)
 	for message := range r.send {
+		for r.status != "authenticated" { //wait if not authenticated
+			time.Sleep(1 * time.Second)
+		}
 		line := "\u0002" + fmt.Sprintf("%s", message) + "\n"
 		_, err := r.sock.Write([]byte(line))
 		if err != nil {
 			fmt.Println(err)
-			if strings.Contains(fmt.Sprintf("%s", err), "connect") && r.reconnect {
-				r.Reconnect()
-			}
+			r.status = "error"
 		}
 	}
 }
 
 //Write sends a message to Rcon.send channel to be written out by Writer().
 func (r *Rcon) Write(message string) {
+	for r.send == nil { //wait to send if channel is not available
+		time.Sleep(1 * time.Second)
+	}
 	r.send <- []byte(strings.TrimSpace(message))
 }
