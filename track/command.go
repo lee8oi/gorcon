@@ -93,16 +93,6 @@ func (t *Tracker) interpret(com chan *message) {
 func (t *Tracker) processor() {
 	for d := range t.proc {
 		switch d.instruct {
-		case "reload":
-			if err := loadJSON(d.line, &t.aliases); err != nil {
-				fmt.Println(err)
-			} else {
-				fmt.Println("Aliases reloaded.")
-			}
-		case "save":
-			if err := writeJSON(d.line, &t.aliases); err != nil {
-				fmt.Println(err)
-			}
 		case "send":
 			fmt.Printf("%s\n", d.line)
 			str, err := t.Rcon.Send(d.line)
