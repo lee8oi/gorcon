@@ -209,6 +209,7 @@ func (r *Rcon) Enqueue(line string) {
 func (r *Rcon) Queue() {
 	for s := range r.queue {
 		r.Write(s)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
