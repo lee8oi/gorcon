@@ -22,7 +22,7 @@ import (
 	"github.com/lee8oi/gorcon"
 	"io/ioutil"
 	//"strconv"
-	//"strings"
+	"strings"
 	"time"
 )
 
@@ -30,9 +30,9 @@ type Tracker struct {
 	players playerList
 	aliases map[string]alias
 	admins  map[string]admin
-	proc    chan process
-	game    game
-	Rcon    gorcon.Rcon
+	//proc    chan process
+	game game
+	Rcon gorcon.Rcon
 }
 
 type admin struct {
@@ -57,9 +57,14 @@ func (t *Tracker) Start(wait string) {
 		fmt.Println(err)
 		return
 	}
-	t.proc = make(chan process)
-	go t.processor()
-	t.process("send", "bf2cc setadminname Gorcon")
+	//t.proc = make(chan process)
+	//go t.processor()
+	//t.process("send", "bf2cc setadminname Gorcon")
+	go t.Rcon.Init()
+	go t.Rcon.Handler(t.handle)
+	t.Rcon.Enqueue("bf2cc monitor 1")
+	t.Rcon.Enqueue("bf2cc setadminname Gorcon")
+
 	loadJSON("players.json", &t.players)
 	loadJSON("game.json", &t.game)
 	if err := loadJSON("admins.json", &t.admins); err != nil {
@@ -82,23 +87,29 @@ func (t *Tracker) Start(wait string) {
 		}
 	}
 	for {
-		str := t.process("reply", "bf2cc si")
-		t.game.update(str)
-
-		str = t.process("reply", "bf2cc clientchatbuffer")
-		com := make(chan *message)
-		go parseChat(str, com)
-		t.interpret(com)
-
-		str = t.process("reply", "bf2cc pl")
-		t.players.parse(str)
-		if err := writeJSON("players.json", t.players); err != nil {
-			fmt.Println(err)
-		}
-		t.players.investigate()
-
+		t.Rcon.Enqueue("bf2cc si")
+		t.Rcon.Enqueue("bf2cc pl")
+		t.Rcon.Enqueue("bf2cc clientchatbuffer")
 		time.Sleep(dur)
 	}
+	//for {
+	//	str := t.process("reply", "bf2cc si")
+	//	t.game.update(str)
+
+	//	str = t.process("reply", "bf2cc clientchatbuffer")
+	//	com := make(chan *message)
+	//	go parseChat(str, com)
+	//	t.interpret(com)
+
+	//	str = t.process("reply", "bf2cc pl")
+	//	t.players.parse(str)
+	//	if err := writeJSON("players.json", t.players); err != nil {
+	//		fmt.Println(err)
+	//	}
+	//	t.players.investigate()
+
+	//	time.Sleep(dur)
+	//}
 }
 
 func writeJSON(path string, m interface{}) (e error) {
@@ -124,4 +135,65 @@ func loadJSON(path string, m interface{}) (e error) {
 		e = err
 	}
 	return
+}
+
+func identify(s *string) (t string) {
+	first := strings.Split(*s, "\r")[0]
+	split := strings.Split(strings.TrimSpace(first), "\t")
+	length := len(split)
+
+	switch {
+	case length == 48:
+		t = "player"
+	case length == 32:
+		t = "server"
+	case length >= 5:
+		t = "chat"
+	case len(*s) == 1:
+		t = "state"
+	case length == 2:
+		t = "viplist"
+	case length == 1:
+		split := strings.Split(first, "\n")
+		nsplit := strings.Split(split[0], " ")
+		if len(nsplit) == 3 {
+			t = "maplist"
+			return
+		}
+		fallthrough
+	default:
+		t = "other"
+	}
+	return
+}
+
+func (t *Tracker) handle(s string) {
+	typ := identify(&s)
+	switch typ {
+	case "server":
+		t.game.update(s)
+	case "chat":
+		com := make(chan *message)
+		go parseChat(s, com)
+		t.interpret(com)
+	case "player":
+		t.players.parse(s)
+		if err := writeJSON("players.json", t.players); err != nil {
+			fmt.Println(err)
+		}
+		t.players.investigate()
+		//case "state", "other", "viplist", "maplist":
+		//	fmt.Println(t)
+		//	fmt.Println(s)
+	}
+
+	//	str = t.process("reply", "bf2cc pl")
+	//	t.players.parse(str)
+	//if err := writeJSON("players.json", t.players); err != nil {
+	//	fmt.Println(err)
+	//}
+	//t.players.investigate()
+
+	//	time.Sleep(dur)
+	//}
 }

@@ -18,16 +18,16 @@ import (
 	"strings"
 )
 
-type process struct {
-	instruct, line string
-	reply          chan string
-}
+//type process struct {
+//	instruct, line string
+//	reply          chan string
+//}
 
-func (t *Tracker) process(instruct, line string) string {
-	reply := make(chan string)
-	t.proc <- process{instruct, line, reply}
-	return <-reply
-}
+//func (t *Tracker) process(instruct, line string) string {
+//	reply := make(chan string)
+//	t.proc <- process{instruct, line, reply}
+//	return <-reply
+//}
 
 //interpret monitors com channel for messages sent from parseChat(). Used to interpret
 //command lines in messages and create processes to handle them.
@@ -44,7 +44,7 @@ func (t *Tracker) interpret(com chan *message) {
 				permitted = true
 			}
 			if t.aliases[split[0]].Power == 0 {
-				//public alias
+				//public alias (no power check)
 				public = true
 			}
 			if !public && !permitted {
@@ -59,11 +59,13 @@ func (t *Tracker) interpret(com chan *message) {
 						split[1] = t.players[r[0]].Name
 						//t.process("send", t.aliases[split[0]].Command+" "+strings.Join(split[1:], " "))
 						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("Pretending to %s %s", split[0], split[1]))
-						t.process("send", l)
+						//t.process("send", l)
+						t.Rcon.Enqueue(l)
 					} else if len(r) > 1 {
 						//fmt.Sprintf("multiple players found ('%s')", split[1])
 						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("multiple players found ('%s')", split[1]))
-						t.process("send", l)
+						//t.process("send", l)
+						t.Rcon.Enqueue(l)
 					} else {
 						fmt.Printf("No results found.")
 					}
@@ -84,32 +86,44 @@ func (t *Tracker) interpret(com chan *message) {
 					continue
 				}
 				full := t.parseTags(id, cmd)
-				t.process("send", full)
+				//t.process("send", full)
+				t.Rcon.Enqueue(full)
 			}
 		}
 	}
 }
 
-func (t *Tracker) processor() {
-	for d := range t.proc {
-		switch d.instruct {
-		case "send":
-			fmt.Printf("%s\n", d.line)
-			str, err := t.Rcon.Send(d.line)
-			if err != nil {
-				fmt.Println(err)
-			}
-			fmt.Println(str)
-		case "reply":
-			str, err := t.Rcon.Send(d.line)
-			if err != nil {
-				fmt.Println(err)
-			}
-			d.reply <- str
-		}
-		close(d.reply)
-	}
-}
+//func (t *Tracker) processor() {
+//	for d := range t.proc {
+//		switch d.instruct {
+//		case "reload":
+//			if err := loadJSON(d.line, &t.aliases); err != nil {
+//				fmt.Println(err)
+//			} else {
+//				fmt.Println("Aliases reloaded.")
+//			}
+//		case "save":
+//			if err := writeJSON(d.line, &t.aliases); err != nil {
+//				fmt.Println(err)
+//			}
+//		case "send":
+//			fmt.Printf("%s\n", d.line)
+//			str, err := t.Rcon.Send(d.line)
+//			if err != nil {
+//				fmt.Println(err)
+//			}
+//			fmt.Println(str)
+//			//d.reply <- ""
+//		case "reply":
+//			str, err := t.Rcon.Send(d.line)
+//			if err != nil {
+//				fmt.Println(err)
+//			}
+//			d.reply <- str
+//		}
+//		close(d.reply)
+//	}
+//}
 
 func (t *Tracker) parseTags(pid int, m string) string {
 	tags, err := regexp.Compile(`\$+[A-Z]+\$`)
@@ -117,47 +131,27 @@ func (t *Tracker) parseTags(pid int, m string) string {
 		fmt.Println(err)
 	}
 	result := tags.ReplaceAllFunc([]byte(m), func(b []byte) (r []byte) {
+		fmt.Println(fmt.Sprintf("%s", b))
+		//return []byte("value")
 		switch fmt.Sprintf("%s", b) {
-		case "$PN$": //Player Name
+		case "$PN$":
 			r = []byte(t.players[pid].Name)
 		case "$PL$":
 			r = []byte(t.players[pid].Level)
-		case "$PC$": //Player Class
+		case "$PT$":
+			r = []byte(t.players[pid].Team)
+		case "$PC$":
 			r = []byte(t.players[pid].Kit)
-		case "$PS$": //Player Score
-			r = []byte(t.players[pid].Score)
-		case "$PD$": //Player Deaths
-			r = []byte(t.players[pid].Deaths)
-		case "$PDS$": //Player Death - Suicides
-			r = []byte(t.players[pid].Suicides)
-		case "$PP$": //Player Ping
-			r = []byte(t.players[pid].Ping)
-		case "$PI$": //Player Idle
-			r = []byte(t.players[pid].Idle)
-		case "$PT$": //Player Team
-			fmt.Println(t.players[pid].Team)
-			if t.players[pid].Team == "1" {
-				r = []byte("National")
-			} else {
-				r = []byte("Royal")
-			}
 		case "$ET$":
 			if t.players[pid].Team == "2" {
 				r = []byte("National")
 			}
 			r = []byte("Royal")
-		case "$PTN$": //Player Team Number (of players)
+		case "$PTN$":
 			if t.players[pid].Team == "1" {
 				r = []byte(t.game.Nsize)
-			} else {
-				r = []byte(t.game.Rsize)
 			}
-		case "$ETN$": //Enemy Team Number (of players)
-			if t.players[pid].Team == "2" {
-				r = []byte(t.game.Nsize)
-			} else {
-				r = []byte(t.game.Rsize)
-			}
+			r = []byte(t.game.Rsize)
 		}
 		return
 	})
