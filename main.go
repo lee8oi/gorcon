@@ -113,9 +113,9 @@ func (r *Rcon) Scan(str string) (s string) {
 	return
 }
 
-//Send is a single-use style function, independant of the Reader & Writer, used
+//Send is a synchronous style function, independant of the Reader & Writer, used
 //to write a command to the socket and returning the resulting data as a string.
-//Includes reconnection.
+//Includes reconnection on connect errors.
 func (r *Rcon) Send(command string) (string, error) {
 	line := "\u0002" + command + "\n"
 	_, err := r.sock.Write([]byte(line))
@@ -143,7 +143,8 @@ func (r *Rcon) Send(command string) (string, error) {
 	return strings.TrimSpace(strings.Trim(result, "\u0004")), nil
 }
 
-//Reader reads all incoming socket data, handling reconnection if enabled.
+//Reader reads all incoming socket data and sends it to the receiving channel.
+//Includes reconnection on connect errors.
 func (r *Rcon) Reader() {
 	for {
 		result, err := bufio.NewReader(r.sock).ReadString('\u0004')
@@ -163,7 +164,7 @@ func (r *Rcon) Reader() {
 }
 
 //Writer handles writing send channel data to the socket. Waits if connection is
-//not authenticated yet.
+//not authenticated.
 func (r *Rcon) Writer() {
 	r.send = make(chan []byte)
 	for message := range r.send {
@@ -194,7 +195,7 @@ func (r *Rcon) Init() {
 	r.receive = make(chan string)
 	go r.Reader()
 	go r.Writer()
-	r.Queue()
+	r.Queue(100 * time.Millisecond)
 }
 
 //Enqueue adds a command line to the Queue to be written to the Rcon connection via Writer.
@@ -206,10 +207,11 @@ func (r *Rcon) Enqueue(line string) {
 }
 
 //Queue sequentially handles outgoing commands being sent to the Rcon connection.
-func (r *Rcon) Queue() {
+//Waits duration before processing next item in queue.
+func (r *Rcon) Queue(dur time.Duration) {
 	for s := range r.queue {
 		r.Write(s)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(dur)
 	}
 }
 
