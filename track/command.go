@@ -78,6 +78,8 @@ func (t *Tracker) interpret(com chan *message) {
 	}
 }
 
+//parseTags scans the message text for special tags used to represent certain data
+//like player name, etc.
 func (t *Tracker) parseTags(pid int, m string) string {
 	tags, err := regexp.Compile(`\$+[A-Z]+\$`)
 	if err != nil {

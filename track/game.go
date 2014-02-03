@@ -20,6 +20,7 @@ type game struct {
 	Ntickets, Nsize, Rtickets, Rsize, Elapsed, Remaining string
 }
 
+//update parses the data string and updates the server data in the current game object.
 func (g *game) update(data string) {
 	if len(data) > 1 {
 		splitLine := strings.Split(data, "\t")
@@ -31,7 +32,7 @@ func (g *game) update(data string) {
 			Name:      splitLine[7],
 			Ranked:    splitLine[25],
 			Balance:   splitLine[24],
-			Map:       cleanMapName(splitLine[5]),
+			Map:       mapName(splitLine[5]),
 			Mode:      strings.ToUpper(mode),
 			Round:     splitLine[31],
 			Players:   splitLine[3],
@@ -49,7 +50,8 @@ func (g *game) update(data string) {
 	}
 }
 
-func cleanMapName(name string) string {
+//MapName returns the full name for the specified map.
+func mapName(name string) string {
 	switch name {
 	case "dependant_day":
 		return "Inland Invasion"
