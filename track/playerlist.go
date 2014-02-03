@@ -123,60 +123,6 @@ func (pl *playerList) parse(str string) {
 	}
 }
 
-///*
-//parse parses 'bf2cc pl' data string and uses it to update player data and track
-//connection states & status's
-//*/
-//func (pl *playerList) parse(data string) (plist playerList) {
-//	if len(data) > 1 {
-//		split := strings.Split(data, "\r")
-//		for _, value := range split {
-//			var p player
-//			splitLine := strings.Split(strings.TrimSpace(value), "\t")
-//			if len(splitLine) < 48 {
-//				continue
-//			}
-//			kit := "none"
-//			if splitLine[34] != "none" {
-//				kit = strings.Split(splitLine[34], "_")[1]
-//			}
-//			id, _ := strconv.Atoi(splitLine[0])
-//			p = player{
-//				Pid:           id,
-//				Name:          splitLine[1],
-//				Profileid:     splitLine[10],
-//				Team:          splitLine[2],
-//				Level:         splitLine[39],
-//				Kit:           kit,
-//				Score:         splitLine[37],
-//				Kills:         splitLine[31],
-//				Deaths:        splitLine[36],
-//				Alive:         splitLine[8],
-//				Connected:     splitLine[4],
-//				Vip:           splitLine[46],
-//				Nucleus:       splitLine[47],
-//				Ping:          splitLine[3],
-//				Idle:          splitLine[41],
-//				Suicides:      strings.TrimSpace(splitLine[30]),
-//				CpCaptures:    splitLine[25],
-//				CpDefends:     splitLine[26],
-//				DamageAssists: splitLine[19],
-//				Neutralizes:   splitLine[28],
-
-//				//temporary variables
-//				PassAssists:        splitLine[20],
-//				CpAssists:          splitLine[27],
-//				NeutralizesAssists: splitLine[29],
-//			}
-//			pl.status(id, &p)
-//			pl.state(id, &p)
-//			pl.update(id, &p)
-//		}
-//		return
-//	}
-//	return
-//}
-
 /*
 state sets player connection state.
 

@@ -5,7 +5,7 @@ file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 gorcon/track (lee8oi)
 
-command methods are used to process in-game commands, system commands, etc.
+command methods are used to process in-game commands.
 */
 
 //
@@ -18,19 +18,8 @@ import (
 	"strings"
 )
 
-//type process struct {
-//	instruct, line string
-//	reply          chan string
-//}
-
-//func (t *Tracker) process(instruct, line string) string {
-//	reply := make(chan string)
-//	t.proc <- process{instruct, line, reply}
-//	return <-reply
-//}
-
 //interpret monitors com channel for messages sent from parseChat(). Used to interpret
-//command lines in messages and create processes to handle them.
+//commands in messages.
 func (t *Tracker) interpret(com chan *message) {
 	for m := range com {
 		id, _ := strconv.Atoi(m.Pid)
@@ -59,12 +48,9 @@ func (t *Tracker) interpret(com chan *message) {
 						split[1] = t.players[r[0]].Name
 						//t.process("send", t.aliases[split[0]].Command+" "+strings.Join(split[1:], " "))
 						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("Pretending to %s %s", split[0], split[1]))
-						//t.process("send", l)
 						t.Rcon.Enqueue(l)
 					} else if len(r) > 1 {
-						//fmt.Sprintf("multiple players found ('%s')", split[1])
 						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("multiple players found ('%s')", split[1]))
-						//t.process("send", l)
 						t.Rcon.Enqueue(l)
 					} else {
 						fmt.Printf("No results found.")
@@ -86,44 +72,11 @@ func (t *Tracker) interpret(com chan *message) {
 					continue
 				}
 				full := t.parseTags(id, cmd)
-				//t.process("send", full)
 				t.Rcon.Enqueue(full)
 			}
 		}
 	}
 }
-
-//func (t *Tracker) processor() {
-//	for d := range t.proc {
-//		switch d.instruct {
-//		case "reload":
-//			if err := loadJSON(d.line, &t.aliases); err != nil {
-//				fmt.Println(err)
-//			} else {
-//				fmt.Println("Aliases reloaded.")
-//			}
-//		case "save":
-//			if err := writeJSON(d.line, &t.aliases); err != nil {
-//				fmt.Println(err)
-//			}
-//		case "send":
-//			fmt.Printf("%s\n", d.line)
-//			str, err := t.Rcon.Send(d.line)
-//			if err != nil {
-//				fmt.Println(err)
-//			}
-//			fmt.Println(str)
-//			//d.reply <- ""
-//		case "reply":
-//			str, err := t.Rcon.Send(d.line)
-//			if err != nil {
-//				fmt.Println(err)
-//			}
-//			d.reply <- str
-//		}
-//		close(d.reply)
-//	}
-//}
 
 func (t *Tracker) parseTags(pid int, m string) string {
 	tags, err := regexp.Compile(`\$+[A-Z]+\$`)

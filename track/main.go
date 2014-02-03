@@ -57,9 +57,6 @@ func (t *Tracker) Start(wait string) {
 		fmt.Println(err)
 		return
 	}
-	//t.proc = make(chan process)
-	//go t.processor()
-	//t.process("send", "bf2cc setadminname Gorcon")
 	go t.Rcon.Init()
 	go t.Rcon.Handler(t.handle)
 	t.Rcon.Enqueue("bf2cc monitor 1")
@@ -92,56 +89,33 @@ func (t *Tracker) Start(wait string) {
 		t.Rcon.Enqueue("bf2cc clientchatbuffer")
 		time.Sleep(dur)
 	}
-	//for {
-	//	str := t.process("reply", "bf2cc si")
-	//	t.game.update(str)
-
-	//	str = t.process("reply", "bf2cc clientchatbuffer")
-	//	com := make(chan *message)
-	//	go parseChat(str, com)
-	//	t.interpret(com)
-
-	//	str = t.process("reply", "bf2cc pl")
-	//	t.players.parse(str)
-	//	if err := writeJSON("players.json", t.players); err != nil {
-	//		fmt.Println(err)
-	//	}
-	//	t.players.investigate()
-
-	//	time.Sleep(dur)
-	//}
 }
 
-func writeJSON(path string, m interface{}) (e error) {
-	b, err := json.MarshalIndent(m, "", "    ")
-	if err != nil {
-		e = err
-		return
+func (t *Tracker) handle(s string) {
+	typ := identify(&s)
+	switch typ {
+	case "server":
+		t.game.update(s)
+	case "chat":
+		com := make(chan *message)
+		go parseChat(s, com)
+		t.interpret(com)
+	case "player":
+		t.players.parse(s)
+		if err := writeJSON("players.json", t.players); err != nil {
+			fmt.Println(err)
+		}
+		t.players.investigate()
+		//case "state", "other", "viplist", "maplist":
+		//	fmt.Println(t)
+		//	fmt.Println(s)
 	}
-	err = ioutil.WriteFile(path, b, 0644)
-	if err != nil {
-		e = err
-	}
-	return
-}
-
-func loadJSON(path string, m interface{}) (e error) {
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		e = err
-	}
-	err = json.Unmarshal(b, m)
-	if err != nil {
-		e = err
-	}
-	return
 }
 
 func identify(s *string) (t string) {
 	first := strings.Split(*s, "\r")[0]
 	split := strings.Split(strings.TrimSpace(first), "\t")
 	length := len(split)
-
 	switch {
 	case length == 48:
 		t = "player"
@@ -167,33 +141,27 @@ func identify(s *string) (t string) {
 	return
 }
 
-func (t *Tracker) handle(s string) {
-	typ := identify(&s)
-	switch typ {
-	case "server":
-		t.game.update(s)
-	case "chat":
-		com := make(chan *message)
-		go parseChat(s, com)
-		t.interpret(com)
-	case "player":
-		t.players.parse(s)
-		if err := writeJSON("players.json", t.players); err != nil {
-			fmt.Println(err)
-		}
-		t.players.investigate()
-		//case "state", "other", "viplist", "maplist":
-		//	fmt.Println(t)
-		//	fmt.Println(s)
+func writeJSON(path string, m interface{}) (e error) {
+	b, err := json.MarshalIndent(m, "", "    ")
+	if err != nil {
+		e = err
+		return
 	}
+	err = ioutil.WriteFile(path, b, 0644)
+	if err != nil {
+		e = err
+	}
+	return
+}
 
-	//	str = t.process("reply", "bf2cc pl")
-	//	t.players.parse(str)
-	//if err := writeJSON("players.json", t.players); err != nil {
-	//	fmt.Println(err)
-	//}
-	//t.players.investigate()
-
-	//	time.Sleep(dur)
-	//}
+func loadJSON(path string, m interface{}) (e error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		e = err
+	}
+	err = json.Unmarshal(b, m)
+	if err != nil {
+		e = err
+	}
+	return
 }
