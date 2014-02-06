@@ -143,23 +143,28 @@ func (pl *playerList) state(key int, p *player) {
 	switch {
 	case pl[key].Connected == "" && p.Connected == "0":
 		s = "initial"
-		fmt.Printf("CONNECTING: %s\n", p.Name)
+		//fmt.Sprintf("CONNECTING: %s\n", p.Name)
+		Log(fmt.Sprintf("CONNECTING: %s\n", p.Name))
 	case pl[key].Connected == "0" && p.Connected == "0":
 		s = "connecting"
 	case pl[key].Connected == "0" && p.Connected == "":
 		s = "interrupted"
-		fmt.Printf("INTERRUPTED: %s\n", pl[key].Name)
+		//fmt.Printf("INTERRUPTED: %s\n", pl[key].Name)
+		Log(fmt.Sprintf("INTERRUPTED: %s\n", pl[key].Name))
 	case pl[key].Connected == "0" && p.Connected == "1":
 		s = "connected"
-		fmt.Printf("CONNECTED: %s\n", p.Name)
+		//fmt.Printf("CONNECTED: %s\n", p.Name)
+		Log(fmt.Sprintf("CONNECTED: %s\n", p.Name))
 	case pl[key].Connected == "1" && p.Connected == "1":
 		s = "established"
 	case pl[key].Connected == "1" && p.Connected == "":
 		s = "disconnected"
 		if pl[key].Joined.Equal(base) {
-			fmt.Printf("DISCONNECTED: %s\n", pl[key].Name)
+			//fmt.Printf("DISCONNECTED: %s\n", pl[key].Name)
+			Log(fmt.Sprintf("DISCONNECTED: %s\n", pl[key].Name))
 		} else {
-			fmt.Printf("DISCONNECTED: %s (%s)\n", pl[key].Name, pl[key].playtime())
+			//fmt.Printf("DISCONNECTED: %s (%s)\n", pl[key].Name, pl[key].playtime())
+			Log(fmt.Sprintf("DISCONNECTED: %s (%s)\n", pl[key].Name, pl[key].playtime()))
 		}
 	case pl[key].Connected == "1" && p.Connected == "0":
 		s = "reconnecting"
@@ -194,15 +199,18 @@ func (pl *playerList) status(key int, p *player) {
 	if pl[key].Vip != p.Vip {
 		if p.Vip == "1" {
 			p.Status = append(p.Status, "promoted")
-			fmt.Printf("%s has been promoted to vip\n", p.Name)
+			//fmt.Printf("%s has been promoted to vip\n", p.Name)
+			Log(fmt.Sprintf("%s has been promoted to vip\n", p.Name))
 		} else {
 			p.Status = append(p.Status, "demoted")
-			fmt.Printf("%s has lost vip status\n", p.Name)
+			//fmt.Printf("%s has lost vip status\n", p.Name)
+			Log(fmt.Sprintf("%s has lost vip status\n", p.Name))
 		}
 	}
 	if p.Level > pl[key].Level && pl[key].Level != "-1" {
 		p.Status = append(p.Status, "leveled")
-		fmt.Printf("%s has leveled up!\n", p.Name)
+		//fmt.Printf("%s has leveled up!\n", p.Name)
+		Log(fmt.Sprintf("%s has leveled up!\n", p.Name))
 	}
 	idle, _ := strconv.Atoi(pl[key].Idle)
 	if idle == 0 && idle > 0 {
@@ -232,25 +240,31 @@ func (pl *playerList) status(key int, p *player) {
 	}
 	if pl[key].Neutralizes != p.Neutralizes {
 		p.Status = append(p.Status, "neutralized")
-		fmt.Printf("%s neturalized a control point!\n", p.Name)
+		//fmt.Printf("%s neturalized a control point!\n", p.Name)
+		Log(fmt.Sprintf("%s neturalized a control point!\n", p.Name))
 	}
 	if p.CpCaptures > pl[key].CpCaptures {
 		p.Status = append(p.Status, "captured")
-		fmt.Printf("%s captured a control point!\n", p.Name)
+		//fmt.Printf("%s captured a control point!\n", p.Name)
+		Log(fmt.Sprintf("%s captured a control point!\n", p.Name))
 	}
 	if p.CpDefends > pl[key].CpDefends {
 		p.Status = append(p.Status, "defended")
-		fmt.Printf("%s defended a control point!\n", p.Name)
+		//fmt.Printf("%s defended a control point!\n", p.Name)
+		Log(fmt.Sprintf("%s defended a control point!\n", p.Name))
 	}
 	//temporary/testing
 	if pl[key].PassAssists != p.PassAssists {
-		fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
+		//fmt.Printf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists)
+		Log(fmt.Sprintf("%s PassAssists change %s to %s\n", p.Name, pl[key].PassAssists, p.PassAssists))
 	}
 	if pl[key].CpAssists != p.CpAssists {
-		fmt.Printf("%s CpAssists change %s to %s\n", p.Name, pl[key].CpAssists, p.CpAssists)
+		//fmt.Printf("%s CpAssists change %s to %s\n", p.Name, pl[key].CpAssists, p.CpAssists)
+		Log(fmt.Sprintf("%s CpAssists change %s to %s\n", p.Name, pl[key].CpAssists, p.CpAssists))
 	}
 	if pl[key].NeutralizesAssists != p.NeutralizesAssists {
-		fmt.Printf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists)
+		//fmt.Printf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists)
+		Log(fmt.Sprintf("%s NeutralizesAssists change %s to %s\n", p.Name, pl[key].NeutralizesAssists, p.NeutralizesAssists))
 	}
 }
 
@@ -323,48 +337,52 @@ func (pl *playerList) investigate() {
 	if killers > 0 && victims > 0 {
 		switch {
 		case killers == 1 && victims == 1:
-			fmt.Printf("- %s KILLED %s", c.killers[0].Name, c.victims[0].Name)
+			msg := fmt.Sprintf("- %s KILLED %s", c.killers[0].Name, c.victims[0].Name)
 			if assistants > 0 {
-				fmt.Printf(" - Assisted by")
+				msg += fmt.Sprintf(" - Assisted by")
 				for i := range c.assistants {
-					fmt.Printf(" %s", c.assistants[i].Name)
+					msg += fmt.Sprintf(" %s", c.assistants[i].Name)
 				}
 			}
-			fmt.Printf(".\n")
+			msg += fmt.Sprintf(".\n")
+			Log(msg)
 		case killers == 1 && victims > 1:
-			fmt.Printf("- %s - SCORED %d KILLS - VICTIMS:", c.killers[0].Name, victims)
+			msg := fmt.Sprintf("- %s - SCORED %d KILLS - VICTIMS:", c.killers[0].Name, victims)
 			for i := range c.victims {
-				fmt.Printf(" %s", c.victims[i].Name)
+				msg += fmt.Sprintf(" %s", c.victims[i].Name)
 			}
-			fmt.Printf("\n")
+			msg += fmt.Sprintf("\n")
+			Log(msg)
 		//case c.killers[0].Name == c.victims[0].Name && c.killers[1].Name == c.victims[1].Name:
 		//	fmt.Printf("- %s and %s - KILLED EACH OTHER.\n", c.killers[0].Name, c.killers[1].Name)
 		case killers > 1 && victims > 1:
-			fmt.Printf("- %d KILLERS %d VICTIMS!\n", killers, victims)
-			fmt.Printf("KILLERS")
+			msg := fmt.Sprintf("- %d KILLERS %d VICTIMS!\n", killers, victims)
+			msg += fmt.Sprintf("KILLERS")
 			for i := range c.killers {
-				fmt.Printf(" %s", c.killers[i].Name)
+				msg += fmt.Sprintf(" %s", c.killers[i].Name)
 			}
-			fmt.Printf(" VICTIMS")
+			msg += fmt.Sprintf(" VICTIMS")
 			for i := range c.victims {
-				fmt.Printf(" %s", c.victims[i].Name)
+				msg += fmt.Sprintf(" %s", c.victims[i].Name)
 			}
-			fmt.Printf(".")
+			msg += fmt.Sprintf(".")
 			if assistants > 0 {
-				fmt.Printf(" ASSISTED BY ")
+				msg += fmt.Sprintf(" ASSISTED BY ")
 				for i := range c.assistants {
-					fmt.Printf("%s ", c.assistants[i].Name)
+					msg += fmt.Sprintf("%s ", c.assistants[i].Name)
 				}
 			}
-			fmt.Printf("\n")
+			msg += fmt.Sprintf("\n")
+			Log(msg)
 		case suicides == 1:
-			fmt.Printf("- %s - KILLED SELF", c.suicides[0])
+			Log(fmt.Sprintf("- %s - KILLED SELF", c.suicides[0]))
 		case suicides > 1:
-			fmt.Printf("- %d HEROES KILLED SELVES:", suicides)
+			msg := fmt.Sprintf("- %d HEROES KILLED SELVES:", suicides)
 			for i := range c.suicides {
-				fmt.Printf(" %s", c.suicides[i].Name)
+				msg += fmt.Sprintf(" %s", c.suicides[i].Name)
 			}
-			fmt.Printf("\n")
+			msg += fmt.Sprintf("\n")
+			Log(msg)
 		}
 	}
 }

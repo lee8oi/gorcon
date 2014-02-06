@@ -24,7 +24,7 @@ func (t *Tracker) interpret(com chan *message) {
 	for m := range com {
 		id, _ := strconv.Atoi(m.Pid)
 		split := strings.Split(m.Text[1:], " ")
-		fmt.Printf("%s[%s]: %s\n", m.Origin, m.Time, m.Text)
+		Log(fmt.Sprintf("%s[%s]: %s\n", m.Origin, m.Time, m.Text))
 		if m.IsCommand {
 			line := ""
 			permitted := false

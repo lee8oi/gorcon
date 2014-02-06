@@ -20,11 +20,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/lee8oi/gorcon"
+	"github.com/lee8oi/gorcon/log"
 	"io/ioutil"
 	//"strconv"
 	"strings"
 	"time"
 )
+
+var Log func(string)
 
 type Tracker struct {
 	players playerList
@@ -57,8 +60,10 @@ func (t *Tracker) Start(wait string) {
 		fmt.Println(err)
 		return
 	}
+	Log = log.H.Log
 	go t.Rcon.Init()
 	go t.Rcon.Handler(t.handle)
+	go log.Start()
 	t.Rcon.Enqueue("bf2cc monitor 1")
 	t.Rcon.Enqueue("bf2cc setadminname Gorcon")
 
@@ -87,6 +92,7 @@ func (t *Tracker) Start(wait string) {
 		t.Rcon.Enqueue("bf2cc si")
 		t.Rcon.Enqueue("bf2cc pl")
 		t.Rcon.Enqueue("bf2cc clientchatbuffer")
+		//t.Log("testing iteration")
 		time.Sleep(dur)
 	}
 }
