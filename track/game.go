@@ -22,12 +22,9 @@ type game struct {
 
 //update parses the data string and updates the server data in the current game object.
 func (g *game) update(data string) {
-	if len(data) > 1 {
-		splitLine := strings.Split(data, "\t")
+	splitLine := strings.Split(data, "\t")
+	if len(splitLine) >= 27 {
 		mode := strings.Split(splitLine[20], "_")[1]
-		if len(splitLine) < 27 {
-			return
-		}
 		*g = game{
 			Name:      splitLine[7],
 			Ranked:    splitLine[25],
@@ -44,9 +41,9 @@ func (g *game) update(data string) {
 			Elapsed:   splitLine[18],
 			Remaining: splitLine[19],
 		}
-	}
-	if err := writeJSON("game.json", g); err != nil {
-		fmt.Println(err)
+		if err := writeJSON("game.json", g); err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
