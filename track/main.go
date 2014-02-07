@@ -101,7 +101,12 @@ func (t *Tracker) handle(s string) {
 	typ := identify(&s)
 	switch typ {
 	case "server":
+		before := t.game.Players
 		t.game.update(s)
+		after := t.game.Players
+		if before != "0" && after == "0" { //when last player leaves
+			t.players.parse(" ")
+		}
 	case "chat":
 		com := make(chan *message)
 		go parseChat(s, com)
