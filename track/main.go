@@ -127,7 +127,7 @@ func identify(s *string) (t string) {
 		t = "player"
 	case length == 32:
 		t = "server"
-	case length >= 5:
+	case length == 5 || length == 6:
 		t = "chat"
 	case len(*s) == 1:
 		t = "state"
