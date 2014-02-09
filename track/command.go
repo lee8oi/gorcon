@@ -86,7 +86,7 @@ func (t *Tracker) parseTags(pid int, m string) string {
 		fmt.Println(err)
 	}
 	result := tags.ReplaceAllFunc([]byte(m), func(b []byte) (r []byte) {
-		fmt.Println(fmt.Sprintf("%s", b))
+		//fmt.Println(fmt.Sprintf("%s", b))
 		//return []byte("value")
 		switch fmt.Sprintf("%s", b) {
 		case "$PN$":
