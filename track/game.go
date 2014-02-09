@@ -24,7 +24,13 @@ type game struct {
 func (g *game) update(data string) {
 	splitLine := strings.Split(data, "\t")
 	if len(splitLine) >= 27 {
-		mode := strings.Split(splitLine[20], "_")[1]
+		var mode string
+		split := strings.Split(splitLine[20], "_")
+		if len(split) > 1 {
+			mode = split[1]
+		} else {
+			mode = data
+		}
 		*g = game{
 			Name:      splitLine[7],
 			Ranked:    splitLine[25],
