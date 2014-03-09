@@ -29,6 +29,12 @@ func (t *Tracker) interpret(com chan *message) {
 			line := ""
 			permitted := false
 			public := false
+			//if split[0] == "" {
+			//	return
+			//}
+			if _, ok := t.aliases[split[0]]; !ok {
+				return
+			}
 			if t.admins[t.players[id].Nucleus].Power >= t.aliases[split[0]].Power {
 				permitted = true
 			}

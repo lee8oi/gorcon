@@ -117,7 +117,7 @@ connection states & status's
 func (pl *playerList) parse(str string) {
 	list := pl.new(str)
 	for i := 0; i < 16; i++ {
-		pl.status(i, &list[i])
+		//pl.status(i, &list[i])
 		pl.state(i, &list[i])
 		pl.update(i, &list[i])
 	}

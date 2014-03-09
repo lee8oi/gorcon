@@ -116,7 +116,7 @@ func (t *Tracker) handle(s string) {
 		if err := writeJSON("players.json", t.players); err != nil {
 			fmt.Println(err)
 		}
-		t.players.investigate()
+		//t.players.investigate()
 		//case "state", "other", "viplist", "maplist":
 		//	fmt.Println(t)
 		//	fmt.Println(s)
