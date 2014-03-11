@@ -82,8 +82,20 @@ func (t *Tracker) Start(wait string) {
 		t.aliases["self"] = alias{Power: 0, Visibility: "private", Message: "$PN$ $PT$ $PL$ $PTN$ enemy: $ET$"}
 		t.aliases["test"] = alias{Power: 100, Visibility: "private", Message: "testing successful"}
 		t.aliases["toot"] = alias{Power: 0, Visibility: "public", Message: "$PN$ bites his lip and farts out the word *$PT$*"}
-		t.aliases["testkick"] = alias{Power: 100, Visibility: "server", Message: "kick"}
-		t.aliases["testban"] = alias{Power: 100, Visibility: "server", Message: "ban"}
+		t.aliases["kick"] = alias{Power: 100, Visibility: "server", Message: "kick"}
+		t.aliases["ban"] = alias{Power: 100, Visibility: "server", Message: "ban"}
+		t.aliases["tacos"] = alias{Power: 0, Visibility: "public", Message: "We only use the finest cuts of $ET$ found on the battlefield. These delicious tacos are for the $PT$ by the $PT$!"}
+		t.aliases["pizza"] = alias{Power: 0, Visibility: "public", Message: "Only the freshest cuts of $ET$ meat go into our fine $PT$ deep dish pizzas!"}
+		t.aliases["beer"] = alias{Power: 0, Visibility: "public", Message: "$PT$ have some tasty pale ale, but the $ET$'s are using them for target practice."}
+		t.aliases["bacon"] = alias{Power: 0, Visibility: "public", Message: "Thinly sliced $ET$'s make the best bacon. Try it for yourself!"}
+		t.aliases["rawr"] = alias{Power: 0, Visibility: "public", Message: "$PN$ howls out a thunderous battle cry."}
+		t.aliases["joint"] = alias{Power: 0, Visibility: "public", Message: "Puff puff pass some of this wicked stuff from our private stash!"}
+		t.aliases["cake"] = alias{Power: 0, Visibility: "public", Message: "The $PN$'s have ordered a cake for the $ET$'s! Filled with explosives."}
+		t.aliases["panic"] = alias{Power: 0, Visibility: "public", Message: "$PN$ panics and starts screaming hysterically."}
+		t.aliases["rage"] = alias{Power: 0, Visibility: "public", Message: "$PN$ gets mad an starts screaming like a maniac."}
+		t.aliases["meow"] = alias{Power: 0, Visibility: "public", Message: "$PN$ lets out a scrappy alley cat meow."}
+		t.aliases["fart"] = alias{Power: 0, Visibility: "public", Message: "$PN$ bites lip and lets out a horrendous grass-wilting fart."}
+		t.aliases["complaint"] = alias{Power: 0, Visibility: "public", Message: "$PN says *heres the complaint department* and points to the exit."}
 		if err := writeJSON("aliases.json", &t.aliases); err != nil {
 			fmt.Println(err)
 		}
