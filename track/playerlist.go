@@ -70,9 +70,12 @@ func (pl *playerList) new(data string) (plist playerList) {
 			if len(splitLine) < 48 {
 				continue
 			}
-			kit := "none"
-			if splitLine[34] != "none" {
-				kit = strings.Split(splitLine[34], "_")[1]
+			kit := ""
+			ksplit := strings.Split(splitLine[34], "_")
+			if len(ksplit) > 1 {
+				kit = ksplit[1]
+			} else {
+				kit = splitLine[34]
 			}
 			id, _ := strconv.Atoi(splitLine[0])
 			//idle, _ := strconv.Atoi(splitLine[41])
