@@ -303,7 +303,7 @@ func (pl *playerList) update(key int, p *player) {
 func (pl *playerList) find(term string) []int {
 	var results []int
 	for key := range pl {
-		if strings.Contains(strings.ToLower(pl[key].Name), term) {
+		if strings.Contains(strings.ToLower(pl[key].Name), strings.ToLower(term)) {
 			results = append(results, key)
 		}
 	}
