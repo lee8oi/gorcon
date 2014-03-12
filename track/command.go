@@ -43,7 +43,7 @@ func (t *Tracker) interpret(com chan *message) {
 				public = true
 			}
 			if !public && !permitted {
-				fmt.Printf("%s - not enough power\n", t.players[id].Name)
+				//fmt.Printf("%s - not enough power\n", t.players[id].Name)
 				continue
 			}
 			switch {
@@ -60,6 +60,41 @@ func (t *Tracker) interpret(com chan *message) {
 						t.Rcon.Enqueue(l)
 					} else {
 						fmt.Printf("No results found.")
+					}
+				}
+			case split[0] == "promote" || split[0] == "demote":
+				val := 1
+				if split[0] == "demote" {
+					val = 0
+				}
+				if len(split) > 1 {
+					r := t.players.find(split[1])
+					if len(r) == 1 {
+						name := t.players[r[0]].Name
+						nucleus := t.players[r[0]].Nucleus
+						l := fmt.Sprintf(`exec game.setPersonaVipStatus %s %s %s`, name, nucleus, val)
+						t.Rcon.Enqueue(l)
+					} else if len(r) > 1 {
+						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("multiple players found ('%s')", split[1]))
+						t.Rcon.Enqueue(l)
+					} else {
+						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("player not found ('%s')", split[1]))
+						t.Rcon.Enqueue(l)
+					}
+				}
+			case split[0] == "info":
+				if len(split) > 1 {
+					r := t.players.find(split[1])
+					if len(r) == 1 {
+						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, t.aliases[split[0]].Message+" "+line)
+						l = t.parseTags(r[0], l)
+						t.Rcon.Enqueue(l)
+					} else if len(r) > 1 {
+						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("multiple players found ('%s')", split[1]))
+						t.Rcon.Enqueue(l)
+					} else {
+						l := fmt.Sprintf(`exec game.sayToPlayerWithId %d "%s"`, id, fmt.Sprintf("player not found ('%s')", split[1]))
+						t.Rcon.Enqueue(l)
 					}
 				}
 			default:
@@ -113,6 +148,14 @@ func (t *Tracker) parseTags(pid int, m string) string {
 				r = []byte(t.game.Nsize)
 			}
 			r = []byte(t.game.Rsize)
+		case "$VIP$":
+			if t.players[pid].Vip == "1" {
+				r = []byte("VIP")
+			} else {
+				r = []byte("")
+			}
+		case "$PING$":
+			r = []byte(t.players[pid].Ping)
 		}
 		return
 	})
