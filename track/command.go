@@ -63,9 +63,9 @@ func (t *Tracker) interpret(com chan *message) {
 					}
 				}
 			case split[0] == "promote" || split[0] == "demote":
-				val := 1
+				val := "1"
 				if split[0] == "demote" {
-					val = 0
+					val = "0"
 				}
 				if len(split) > 1 {
 					r := t.players.find(split[1])
