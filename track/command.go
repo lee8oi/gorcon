@@ -135,7 +135,10 @@ func (t *Tracker) parseTags(pid int, m string) string {
 		case "$PL$":
 			r = []byte(t.players[pid].Level)
 		case "$PT$":
-			r = []byte(t.players[pid].Team)
+			if t.players[pid].Team == "1" {
+				r = []byte("National")
+			}
+			r = []byte("Royal")
 		case "$PC$":
 			r = []byte(t.players[pid].Kit)
 		case "$ET$":

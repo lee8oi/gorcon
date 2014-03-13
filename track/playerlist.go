@@ -284,6 +284,7 @@ func (pl *playerList) update(key int, p *player) {
 		pl[key].Vip = p.Vip
 		pl[key].Deaths = p.Deaths
 		pl[key].Kills = p.Kills
+		pl[key].Kit = p.Kit
 		pl[key].Level = p.Level
 		pl[key].Ping = p.Ping
 		pl[key].Score = p.Score
