@@ -99,7 +99,7 @@ func (t *Tracker) Start(wait string) {
 		t.aliases["rules"] = alias{Power: 0, Visibility: "public", Message: "Rules: Be respectful. Help your team. No cheating, no whining, no badmouthing, no idling, no t-bagging. no soliciting."}
 		t.aliases["promote"] = alias{Power: 100, Visibility: "server", Message: ""}
 		t.aliases["demote"] = alias{Power: 100, Visibility: "server", Message: ""}
-		t.aliases["info"] = alias{Power: 100, Visibility: "server", Message: "$PN$ Class:$PC$ Lvl:$PL$ Ping:$PING$ $VIP$"}
+		t.aliases["info"] = alias{Power: 0, Visibility: "server", Message: "$PN$ Class:$PC$ Lvl:$PL$ Ping:$PING$ $VIP$"}
 		if err := writeJSON("aliases.json", &t.aliases); err != nil {
 			fmt.Println(err)
 		}
